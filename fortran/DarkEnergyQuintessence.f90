@@ -788,18 +788,21 @@
     class(TQuintessenceModel) :: this
     real(dl) phi,Vofphi
     integer deriv
-    real(dl) theta, costheta, sintheta
+    real(dl) theta, costheta, sintheta, P, dP, ddP
     real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
     ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
     ! m = m_theory/M_Pl
     theta = phi
     if (this%model_idx==7) then
+        P = 1+ this%a0*(theta-this%n) + this%b0*(theta-this%n)**2 + this%c0*(theta-this%n)**3 + this%d0*(theta-this%n)**4
+        dP = this%a0 + 2*this%b0*(theta-this%n) + 3*this%c0*(theta-this%n)**2 + 4*this%d0*(theta-this%n)**3
+        ddP = 2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2
         if (deriv==0) then
-            Vofphi = this%V0 * (1+ this%a0*(theta-this%n) + this%b0*(theta-this%n)**2 + this%c0*(theta-this%n)**3 + this%d0*(theta-this%n)**4)
+            Vofphi = this%V0 * exp(P)
         else if (deriv ==1) then
-            Vofphi = this%V0 * (this%a0 + 2*this%b0*(theta-this%n) + 3*this%c0*(theta-this%n)**2 + 4*this%d0*(theta-this%n)**3)
+            Vofphi = this%V0 * dP * exp(P)
         else if (deriv ==2) then
-            Vofphi = this%V0 * (2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2)
+            Vofphi = this%V0 * exp(P) * (ddP +dP**2)
         end if
     elseif (this%model_idx==6) then
         ! epsilon = exp(-this%n*theta**2/(this%L**2))
