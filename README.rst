@@ -1,3 +1,5 @@
+Version of CAMB used in https://arxiv.org/abs/2405.17396 for the exponential quintessence model.
+
 ===================
 CAMB
 ===================
@@ -11,8 +13,8 @@ CAMB
    :target: https://anaconda.org/conda-forge/camb
 .. image:: https://readthedocs.org/projects/camb/badge/?version=latest
    :target: https://camb.readthedocs.io/en/latest
-.. image:: https://github.com/cmbant/camb/actions/workflows/tests.yml/badge.svg?branch=master
-  :target: https://github.com/cmbant/CAMB/actions
+.. image:: https://img.shields.io/travis/com/cmbant/camb
+  :target: https://app.travis-ci.com/cmbant/camb/builds
 .. image:: https://mybinder.org/badge_logo.svg
   :target: https://mybinder.org/v2/gh/cmbant/CAMB/HEAD?filepath=docs%2FCAMBdemo.ipynb
 
@@ -39,13 +41,6 @@ Then install using::
 
     pip install -e ./CAMB [--user]
 
-For development, install with dev dependencies and setup pre-commit hooks::
-
-    pip install -e ./CAMB[dev] [--user]
-    pre-commit install
-
-See `CONTRIBUTING.md <CONTRIBUTING.md>`_ for full development setup instructions.
-
 You will need gfortran 6 or higher installed to compile (usually included with gcc by default).
 If you have gfortran installed, "python setup.py make" (and other standard setup commands) will build the Fortran
 library on all systems (including Windows without directly using a Makefile).
@@ -64,7 +59,8 @@ Branches
 
 The master branch contains latest changes to the main release version.
 
-There is a test suite, which runs automatically on GitHub actions for new commits and pull requests.
+The devel branch contains latest less-stable things in development.
+The master and devel branches have an integrated test suite, which runs automatically on `Travis <https://travis-ci.org>`_  for new commits and pull requests.
 Reference results and test outputs are stored in the `test outputs repository <https://github.com/cmbant/CAMB_test_outputs/>`_. Tests can also be run locally.
 
 To reproduce legacy results, see these branches:

@@ -24,7 +24,6 @@
     !     for restrictions on the modification and distribution of this software.
 
     module results
-    use Precision
     use constants, only : const_pi, const_twopi
     use MiscUtils
     use RangeUtils
@@ -202,7 +201,7 @@
         !gets sigma_vdelta, like sigma8 but using velocity-density cross power,
         !in late LCDM f*sigma8 = sigma_vdelta^2/sigma8
 
-        logical :: needs_good_pk_sampling = .false. !not currently used
+        logical :: needs_good_pk_sampling = .false.
 
         logical ::call_again = .false.
         !if being called again with same parameters to get different thing
@@ -263,6 +262,8 @@
     procedure :: get_lmax_lensed => CAMBdata_get_lmax_lensed
     procedure :: get_zstar => CAMBdata_get_zstar
     procedure :: DarkEnergyStressEnergy => CAMBdata_DarkEnergyStressEnergy
+    procedure :: DarkEnergyPhiPhidot => CAMBdata_DarkEnergyPhiPhidot
+    ! procedure :: DarkEnergyVphi => CAMBdata_DarkEnergyVphi
     procedure :: SetParams => CAMBdata_SetParams
     procedure :: Free => CAMBdata_Free
     procedure :: grho_no_de
@@ -275,9 +276,6 @@
     procedure :: binary_search
     procedure, nopass :: PythonClass => CAMBdata_PythonClass
     procedure, nopass :: SelfPointer => CAMBdata_SelfPointer
-#if defined(__GFORTRAN__) && (( __GNUC__ < 15 ) || ( __GNUC__ == 15 && __GNUC_MINOR__ < 2 ))
-    final :: CAMBdata_final !Workaround for gfortran bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120637
-#endif
     end type CAMBdata
 
     interface
@@ -613,7 +611,7 @@
     real(dl), intent(IN) :: a1,a2
     real(dl), optional, intent(in) :: in_tol
 
-    atol = PresentDefault(base_tol/1000/exp(this%CP%Accuracy%AccuracyBoost*this%CP%Accuracy%IntTolBoost-1), in_tol)
+    atol = PresentDefault(tol/1000/exp(this%CP%Accuracy%AccuracyBoost*this%CP%Accuracy%IntTolBoost-1), in_tol)
     CAMBdata_DeltaTime = Integrate_Romberg(this, dtauda,a1,a2,atol)
 
     end function CAMBdata_DeltaTime
@@ -997,10 +995,12 @@
     real(dl), intent(in), optional :: eta_k_max
 
     NLL_num_redshifts = 0
+    this%needs_good_pk_sampling = .false.
     associate(P => Params%Transfer)
         if ((Params%NonLinear==NonLinear_lens .or. Params%NonLinear==NonLinear_both) .and. &
             (Params%DoLensing .or. this%num_redshiftwindows > 0)) then
             ! Want non-linear lensing or other sources
+            this%needs_good_pk_sampling = .false.
             NL_Boost = Params%Accuracy%AccuracyBoost*Params%Accuracy%NonlinSourceBoost
             if (Params%Do21cm) then
                 !Sources
@@ -1075,6 +1075,28 @@
     grhov_t = grhov_t/a**2
 
     end subroutine CAMBdata_DarkEnergyStressEnergy
+
+    subroutine CAMBdata_DarkEnergyPhiPhidot(this, a, phi,phidot, n) ! added for phiphidot output
+    class(CAMBdata) :: this
+    integer, intent(in) :: n
+    real(dl), intent(in) :: a(n)
+    real(dl), intent(out) :: phi(n), phidot(n)
+    integer i
+    do i=1, n
+        call this%CP%DarkEnergy%ValsAta(a(i), phi(i), phidot(i))
+    end do
+    end subroutine CAMBdata_DarkEnergyPhiPhidot
+
+    subroutine CAMBdata_DarkEnergyVphi(this, phi, Vphi, n, deriv) ! added for Vphi output
+    class(CAMBdata) :: this
+    integer, intent(in) :: n, deriv
+    real(dl), intent(in) :: phi(n)
+    real(dl), intent(out) :: Vphi(n)
+    integer i
+    do i=1, n
+        Vphi(i) = this%CP%DarkEnergy%Vofphi(phi(i),deriv)
+    end do
+    end subroutine CAMBdata_DarkEnergyVphi
 
     function rofChi(this,Chi) !sinh(chi) for open, sin(chi) for closed.
     class(CAMBdata) :: this
@@ -1986,15 +2008,12 @@
         end if
 
         !  approximate Baryon sound speed squared (over c**2).
-        !  Use pre-reionization ionization fraction for cs2-related terms for consistency
-        !  (not correct, but avoids odd behaviour at very high k)
-        !  https://github.com/cmbant/CAMB/issues/171
-        fe=(1._dl-CP%yhe)*xe_a(i)/(1._dl-0.75d0*CP%yhe+(1._dl-CP%yhe)*xe_a(i))
+        fe=(1._dl-CP%yhe)*this%xe(i)/(1._dl-0.75d0*CP%yhe+(1._dl-CP%yhe)*this%xe(i))
         dtbdla=-2._dl*this%tb(i)
         if (a*this%tb(i)-CP%tcmb < -1e-8) then
             dtbdla= dtbdla -thomc0*fe/adot*(a*this%tb(i)-CP%tcmb)/a**3
         end if
-        barssc=barssc0*(1._dl-0.75d0*CP%yhe+(1._dl-CP%yhe)*xe_a(i))
+        barssc=barssc0*(1._dl-0.75d0*CP%yhe+(1._dl-CP%yhe)*this%xe(i))
         this%cs2(i)=barssc*this%tb(i)*(1-dtbdla/this%tb(i)/3._dl)
 
         ! Calculation of the visibility function
@@ -2559,8 +2578,8 @@
                         else
                             !evo bias is computed with total derivative
                             RedWin%Wingtau(ix) =  -tmp2(ix) * RedWin%Wing(ix) / (back_count_tmp(ix,i)*hubble_tmp(ix)) &
-                            !+ 5*RedWin%dlog10Ndm * ( RedWin%Wing(ix)- int_tmp(ix,i)/hubble_tmp(ix))
-                            !The correction from total to partial derivative takes 1/adot(tau0-tau) cancels
+                                !+ 5*RedWin%dlog10Ndm * ( RedWin%Wing(ix)- int_tmp(ix,i)/hubble_tmp(ix))
+                                !The correction from total to partial derivative takes 1/adot(tau0-tau) cancels
                                 + 10*RedWin%Window%dlog10Ndm * RedWin%Wing(ix)
                         end if
                     end do
@@ -2731,7 +2750,7 @@
     Type(ClTransferData) :: CTrans
     integer st
 
-    if (allocated(CTrans%Delta_p_l_k)) deallocate(CTrans%Delta_p_l_k)
+    deallocate(CTrans%Delta_p_l_k, STAT = st)
     call CTrans%q%getArray(.true.)
 
     allocate(CTrans%Delta_p_l_k(CTrans%NumSources,&
@@ -2758,7 +2777,6 @@
     Type(ClTransferData) :: CTrans
 
     if (allocated(CTrans%Delta_p_l_k)) deallocate(CTrans%Delta_p_l_k)
-    if (allocated(CTrans%ls%l)) deallocate(CTrans%ls%l)
     call CTrans%q%Free()
     call Free_Limber(CTrans)
 
@@ -3051,7 +3069,7 @@
     integer, parameter :: Transfer_kh =1, Transfer_cdm=2,Transfer_b=3,Transfer_g=4, &
         Transfer_r=5, Transfer_nu = 6,  & !massless and massive neutrino
         Transfer_tot=7, Transfer_nonu=8, Transfer_tot_de=9,  &
-    ! total perturbations with and without neutrinos, with neutrinos+dark energy in the numerator
+        ! total perturbations with and without neutrinos, with neutrinos+dark energy in the numerator
         Transfer_Weyl = 10, & ! the Weyl potential, for lensing and ISW
         Transfer_Newt_vel_cdm=11, Transfer_Newt_vel_baryon=12,   & ! -k v_Newtonian/H
         Transfer_vel_baryon_cdm = 13 !relative velocity of baryons and CDM
