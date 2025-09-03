@@ -230,9 +230,10 @@ class QuintessenceModel(Quintessence):
 
     _fields_ = [
         ("n", c_double, "lambda for the exponential potential"),
-        ("c0", c_double, "c0"),
+        ("a0", c_double, "a0"),
         ("b0", c_double, "b0"),
-        ("Aparam", c_double, "A"),
+        ("c0", c_double, "c0"),
+        ("d0", c_double, "c0"),
         ("V0", c_double, "Overall potential amplitude "
                         " used for tuning to get correct DE density today"),
         ("theta_i", c_double, "phi_init initial field value"),
@@ -242,7 +243,7 @@ class QuintessenceModel(Quintessence):
         # ("fde_zc", c_double, "fraction of early dark energy density to total at peak"),
         ("npoints", c_int, "number of points for background integration spacing"),
         ("min_steps_per_osc", c_int, "minimumum number of steps per background oscillation scale"),
-        ("model_idx", c_int, "which quintessence model (VofPhi) to use"),                
+        ("model_idx", c_int, "which quintessence model (VofPhi) to use"),
         ("fde", AllocatableArrayDouble, "after initialized, the calculated background early dark energy "
                                         "fractions at sampled_a"),
         ("__ddfde", AllocatableArrayDouble),
@@ -251,10 +252,12 @@ class QuintessenceModel(Quintessence):
     ] # type: ignore
     _fortran_class_name_ = 'TQuintessenceModel'
 
-    def set_params(self, n, c0=0, b0=0, V0=1e-8, theta_i=0.0,frac_lambda0=0.,model_idx=1):
+    def set_params(self, n, a0=0, b0=0, c0=0, d0=0, V0=1e-8, theta_i=0.0,frac_lambda0=0.,model_idx=1):
         self.n = n
-        self.c0 = c0
+        self.a0 = a0
         self.b0 = b0
+        self.c0 = c0
+        self.d0 = d0
         self.V0 = V0
         self.theta_i = theta_i
         self.frac_lambda0 = frac_lambda0

@@ -81,9 +81,10 @@
 
     type, extends(TQuintessence) :: TQuintessenceModel ! adding a new class for the pure exponential potential
         real(dl) :: n = 1_dl
-        real(dl) :: c0 = 1_dl
+        real(dl) :: a0 = 1_dl
         real(dl) :: b0 = 1_dl
-        real(dl) :: Aparam = 1_dl
+        real(dl) :: c0 = 1_dl
+        real(dl) :: d0 = 1_dl
         real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
         real(dl) :: theta_i = 0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
@@ -787,55 +788,27 @@
     class(TQuintessenceModel) :: this
     real(dl) phi,Vofphi
     integer deriv
-    real(dl) theta, costheta, sintheta 
+    real(dl) theta, costheta, sintheta
     real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
     ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
     ! m = m_theory/M_Pl
     theta = phi
-    if (this%model_idx==9) then
-        theta = phi/this%n ! = phi/f
-        costheta = cos(theta)
-        sintheta = sin(theta)
+    if (this%model_idx==7) then
         if (deriv==0) then
-            Vofphi = this%V0 * (theta**2 + this%c0*theta*costheta + this%Aparam)
+            Vofphi = this%V0 * (1+ this%a0*(theta-this%n) + this%b0*(theta-this%n)**2 + this%c0*(theta-this%n)**3 + this%d0*(theta-this%n)**4)
         else if (deriv ==1) then
-            Vofphi = this%V0/this%n * (2*theta + this%c0*(costheta - theta*sintheta))
+            Vofphi = this%V0 * (this%a0 + 2*this%b0*(theta-this%n) + 3*this%c0*(theta-this%n)**2 + 4*this%d0*(theta-this%n)**3)
         else if (deriv ==2) then
-            Vofphi =   this%V0/(this%n)**2* (2 - this%c0*(2*sintheta + theta*costheta))
+            Vofphi = this%V0 * (2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2)
         end if
-    elseif (this%model_idx==8) then
-        if (deriv==0) then
-            Vofphi = this%V0 * exp(theta**2)*(4.845719*theta**2+0.19458601+exp(theta**2* (-20.447332)))
-        else if (deriv ==1) then
-            Vofphi = this%V0* exp(-19.4473*theta**2) * theta* (-38.8947+exp(20.4473*theta**2)*(10.0806+9.69144*theta**2))
-        else if (deriv ==2) then
-            Vofphi =   this%V0* exp(-19.4473*theta**2) *(-38.8947 + 1512.79*theta**2 + exp(20.4473 *theta**2)*(10.0806 + 49.2355*theta**2+19.3829 *theta**4))  
-        end if
-    elseif (this%model_idx==7) then
-        if (deriv==0) then
-            Vofphi = this%V0 * ((sin((0.08919786**phi) * 22.226248) * -0.033646077) + (0.059341926**phi) * 0.551497 + 0.45012686)
-        else if (deriv ==1) then
-            VofPhi = this%V0 * (22.226248*(-0.033646077)*0.08919786**phi * log(0.08919786) * cos(22.226248 * 0.08919786**phi) + 0.551497 * 0.059341926**phi * log(0.059341926))
-        else if (deriv ==2) then
-            Vofphi = this%V0 * (22.226248*(-0.033646077)*0.08919786**phi * (log(0.08919786))**2 * cos(22.226248*0.08919786**phi)-22.226248**2 * (-0.033646077) * 0.08919786**(2.0_dl * phi) * (log(0.08919786))**2 * sin(22.226248 * 0.08919786**phi) + 0.551497 * 0.059341926**phi * (log(0.059341926))**2)
-        end if
-        !g = (0.056926273*sin(25.473806*0.12283284**phi)+(0.074795336**phi)/1.0193655)**(1/2)
-        !f = 0.056926273*25.473806*0.12283284**phi*log(0.12283284)*cos(25.473806*0.12283284**phi) + (0.074795336**phi*log(0.074795336))/1.0193655
-        !if (deriv==0) then
-        !    Vofphi = this%V0 * g
-        !else if (deriv ==1) then
-        !    Vofphi = 1/2*this%V0 * f/g
-        !else if (deriv ==2) then
-        !    Vofphi = this%V0 * (0.056926273*25.473806*0.12283284**phi*log(0.12283284)**2*cos(25.473806*0.12283284**phi)-0.056926273*25.473806**2*0.12283284**(2*phi)*log(0.12283284)**2*sin(25.473806*0.12283284**phi)+ (0.074795336**phi*log(0.074795336)**2)/1.0193655)/(2*g) - this%V0*f**2/(4*g**3)
-        !end if 
     elseif (this%model_idx==6) then
-        ! epsilon = exp(-this%n*phi**2/(this%L**2))
+        ! epsilon = exp(-this%n*theta**2/(this%L**2))
         if (deriv==0) then
-            Vofphi = this%V0*(1-phi**2/(this%n**2))**2*exp(this%c0*phi**2/(this%n**2))
+            Vofphi = this%V0*(1-theta**2/(this%n**2))**2*exp(this%c0*theta**2/(this%n**2))
         else if (deriv ==1) then
-             Vofphi = 2*this%V0*exp(this%c0*phi**2/(this%n**2))*phi/(this%n**6)*(phi**2-this%n**2)*(2*this%n**2+this%c0*(phi**2-this%n**2))
+             Vofphi = 2*this%V0*exp(this%c0*theta**2/(this%n**2))*theta/(this%n**6)*(theta**2-this%n**2)*(2*this%n**2+this%c0*(theta**2-this%n**2))
         else if (deriv ==2) then
-             Vofphi = 2*this%V0*exp(this%c0*phi**2/(this%n**2))/(this%n**8)*(6*phi**2*this%n**4-2*this%n**6+2*this%c0**2*(phi**3-phi*this%n**2)**2+this%c0*(9*phi**4*this%n**2-10*phi**2*this%n**4+this%n**6))
+             Vofphi = 2*this%V0*exp(this%c0*theta**2/(this%n**2))/(this%n**8)*(6*theta**2*this%n**4-2*this%n**6+2*this%c0**2*(theta**3-theta*this%n**2)**2+this%c0*(9*theta**4*this%n**2-10*theta**2*this%n**4+this%n**6))
         end if
     elseif (this%model_idx==5) then
         if (deriv==0) then
@@ -857,7 +830,7 @@
             Vofphi = this%V0*costheta/(this%n)**2
         end if
     elseif (this%model_idx==3) then !FT Hilltop, n = phi0
-        if (deriv==0) then 
+        if (deriv==0) then
             Vofphi = this%V0*(1 - (theta/this%n)**2 )**2 + this%frac_lambda0*this%State%grhov !units*this%m**2*this%f**2*(1 - cos(theta))**this%n + this%frac_lambda0*this%State%grhov
         else if (deriv ==1) then
             Vofphi = -4*this%V0 * theta*(1-(theta/this%n)**2)/ (this%n)**2  !units*this%m**2*this%f*this%n*(1 - cos(theta))**(this%n-1)*sin(theta)
@@ -865,7 +838,7 @@
             Vofphi = this%V0*(8*theta**2/(this%n)**4 - 4*(1-(theta/this%n)**2)/(this%n)**2 )  !-2*this%V0 / (this%n)**2
         end if
     elseif (this%model_idx==2) then !Sugra Hilltop, n = alpha
-        if (deriv==0) then 
+        if (deriv==0) then
             Vofphi = this%V0*exp(-sqrt(2.)*theta)*exp(-2.*this%n*exp(sqrt(2.)*theta))*(1.+4.*this%n**2*exp(2.*sqrt(2.)*theta)-3.+4.*this%n*exp(sqrt(2.)*theta))
         else if (deriv ==1) then
             Vofphi = -2.*sqrt(2.)*exp(-2.*exp(sqrt(2.)*theta)*this%n-sqrt(2.)*theta)*(-1.-2.*exp(sqrt(2.)*theta)*this%n+2.*exp(2.*sqrt(2.)*theta)*this%n**2+4.*exp(3.*sqrt(2.)*theta)*this%n**3)*this%V0
@@ -873,14 +846,14 @@
             Vofphi = 4.*exp(-2.*exp(sqrt(2.)*theta)*this%n-sqrt(2.)*theta)*(-1.-2.*exp(sqrt(2.)*theta)*this%n-6.*exp(2.*sqrt(2.)*theta)*this%n**2-4.*exp(3.*sqrt(2.)*theta)*this%n**3+8.*exp(4.*sqrt(2.)*theta)*this%n**4)*this%V0
         end if
     elseif (this%model_idx==1) then !Exponential Quintessence, n = lambda
-        if (deriv==0) then 
+        if (deriv==0) then
             Vofphi = this%V0*exp(-this%n*theta) + this%frac_lambda0*this%State%grhov !units*this%m**2*this%f**2*(1 - cos(theta))**this%n + this%frac_lambda0*this%State%grhov
         else if (deriv ==1) then
             Vofphi = -this%V0*this%n*exp(-this%n*theta) !units*this%m**2*this%f*this%n*(1 - cos(theta))**(this%n-1)*sin(theta)
         else if (deriv ==2) then
             Vofphi = this%V0*this%n**2*exp(-this%n*theta)
         end if
-    else 
+    else
         stop 'Must provide a valid Quintessence model to use'
     end if
     end function TQuintessenceModel_VofPhi
@@ -911,12 +884,12 @@
     !if (this%model_idx==4) then !Cosine, n = f
     !    if (FeedbackLevel > 0) write (*,*)  'Cosine potential' ! = phi/f
     !elseif (this%model_idx==3) then !FT Hilltop, n = phi0
-    !    if (FeedbackLevel > 0) write (*,*)  'FT Hilltop' 
+    !    if (FeedbackLevel > 0) write (*,*)  'FT Hilltop'
     !elseif (this%model_idx==2) then !Sugra Hilltop, n = alpha
-    !    if (FeedbackLevel > 0) write (*,*)  'Sugra Hilltop' 
+    !    if (FeedbackLevel > 0) write (*,*)  'Sugra Hilltop'
     !elseif (this%model_idx==1) then !Exponential Quintessence, n = lambda
-    !    if (FeedbackLevel > 0) write (*,*)  'Exponential' 
-    !else 
+    !    if (FeedbackLevel > 0) write (*,*)  'Exponential'
+    !else
     !    stop 'Must provide a valid Quintessence model to use'
     !end if
 
@@ -938,7 +911,7 @@
     end if
     allocate(phi_a(npoints),phidot_a(npoints), sampled_a(npoints), fde(npoints))
 
-    if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0, n = ', this%V0,this%n ! just for testing 
+    if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0, n = ', this%V0,this%n ! just for testing
 
     initial_phi = this%theta_i
     astart = this%astart
@@ -971,7 +944,7 @@
     !     if (FeedbackLevel > 0) write(*,*) 'Search for new V0 converged = ',OK
     !     if (FeedbackLevel > 1) write(*,*) 'Difference between new and required Omega_DE = ', abs(om1-this%State%Omega_de)
     !     if (FeedbackLevel > 1) write (*,'(A, ES10.2)') 'new V0 from old method = ',this%V0
-    !     if (FeedbackLevel > 1) write(*,*) 'Omega_DE from scalar field with adjusted V0 is ',om1 
+    !     if (FeedbackLevel > 1) write(*,*) 'Omega_DE from scalar field with adjusted V0 is ',om1
     !     ! amk - DO WE NEED TO CHANGE this%State%Omega_de to the new value
     ! else
     !     OK = .true.
@@ -984,7 +957,7 @@
 
     ! --------------- method 2 for initial conditions tuning V0 using Binary search, need to cleanup the implementation------------------------------
     ! this%V0 = 1d-7
-    ! om1= this%GetOmegaFromInitial(astart,initial_phi,initial_phidot,atol) 
+    ! om1= this%GetOmegaFromInitial(astart,initial_phi,initial_phidot,atol)
     logV0_low = -15.0_dl
     logV0_high = -1_dl
     logV0 = this%V0
@@ -994,20 +967,20 @@
        OK=.false.
        if (om_in>this%State%omega_de) then
           logV0_high = log10(this%V0)
-       else 
+       else
           logV0_low = log10(this%V0)
        end if
-       this%V0 = 10**(logV0_low) 
+       this%V0 = 10**(logV0_low)
        om1 = this%GetOmegaFromInitial(astart,initial_phi,initial_phidot, atol)
-       this%V0 = 10**(logV0_high) 
+       this%V0 = 10**(logV0_high)
        om2= this%GetOmegaFromInitial(astart,initial_phi,initial_phidot, atol)
-       if (FeedbackLevel > 1) write (*,*)  'Searching for V0 in range [log10_low,log10_high] :', logV0_low, logV0_high       
+       if (FeedbackLevel > 1) write (*,*)  'Searching for V0 in range [log10_low,log10_high] :', logV0_low, logV0_high
        if (om1 > this%State%omega_de .or. om2 < this%State%omega_de) then
            write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
            write (*,*) 'om1, om2 = ', real(om1), real(om2)
            global_error_flag = error_darkenergy
            global_error_message= 'TEarlyQuintessence No solution for V0 in provided range' ! Here we need to raise a CAMBerror so that cobaya assigns point -inf loglikelihood
-           return                  
+           return
        end if
 
        logV0_2 = logV0_high
@@ -1039,8 +1012,8 @@
         if (FeedbackLevel > 0) write(*,*) 'Difference between new and required Omega_DE = ', abs(om1-this%State%Omega_de)
         if (FeedbackLevel > 0) write (*,'(A, ES10.2)') 'new V0 from binary search = ',this%V0
         if (FeedbackLevel > 0) write(*,*) 'Omega_DE from scalar field with adjusted V0 is ',om1
-        
-        if (.not. OK) then !stop 'Search for good intial conditions did not converge' 
+
+        if (.not. OK) then !stop 'Search for good intial conditions did not converge'
             write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
             write (*,*) 'n, phi_i = ', real(this%n), real(this%theta_i)
             global_error_flag = error_darkenergy
@@ -1049,28 +1022,10 @@
         end if
     else
         OK=.true.
-    end if 
+    end if
 
     ! --------------- method 2 for initial conditions tuning V0 End ------------------------------
 
-    ! --------------- method to find A in potential #9 start -------------------------------------------
-    !theta_best = 0._dl
-    fmin = huge(1._dl)
-
-    nsteps = 20000
-    dtheta = 0.002_dl
-    do i = -nsteps/2, nsteps/2
-        theta_try = i * dtheta
-        fval = theta_try**2/this%n**2 + this%c0 * theta_try/this%n * cos(theta_try/this%n)
-        if (fval < fmin) then
-            fmin = fval
-           !theta_best = theta_try
-           write(*,*) "fmin =", fmin
-        end if
-    end do
-
-    this%Aparam = -fmin
-    ! --------------- method to find A in potential #9 end -------------------------------------------
 
 
     y(1)=initial_phi
@@ -1358,8 +1313,10 @@
     call this%TDarkEnergyModel%ReadParams(Ini)
     this%V0 = Ini%Read_Double('V0', 1d-7)
     this%n = Ini%Read_Double('nq', 1.d0)
-    this%c0 = Ini%Read_Double('c0', 1.d0)
+    this%a0 = Ini%Read_Double('a0', 1.d0)
     this%b0 = Ini%Read_Double('b0', 1.d0)
+    this%c0 = Ini%Read_Double('c0', 1.d0)
+    this%d0 = Ini%Read_Double('d0', 1.d0)
     this%theta_i = Ini%Read_Double('theta_i',0.d0)
     this%model_idx = Ini%Read_Int('qmodel',1)
 
@@ -1396,15 +1353,15 @@
     integer, parameter ::  NumEqs=2
     real(dl) c(24),w(NumEqs,9), y(NumEqs), ast
     integer ind, i
-    
+
     ast=astart
     ind=1
     y(1)=phi
     y(2)=phidot*astart**2
     call dverk(this,NumEqs,EvolveBackground,ast,y,1._dl,atol,ind,c,NumEqs,w)
     call EvolveBackground(this,NumEqs,1._dl,y,w(:,1))
-    
+
     GetOmegaFromInitial=(0.5d0*y(2)**2 + this%Vofphi(y(1),0))/this%State%grhocrit !(3*adot**2)
-    
+
     end function GetOmegaFromInitial
     end module Quintessence
