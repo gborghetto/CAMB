@@ -787,7 +787,7 @@
     !return result is in 1/Mpc^2 units [so times (Mpc/c)^2 to get units in 1/Mpc^2]
     class(TQuintessenceModel) :: this
     real(dl) phi,Vofphi
-    real(dl) logV, dlog(V), ddlog(V)
+    real(dl) logV, dlogV, ddlogV
     integer deriv
     real(dl) theta, costheta, sintheta, P, dP, ddP
     real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
@@ -800,7 +800,7 @@
         ddP = 2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2
 
         logV = log(P)
-        dlogv = 1/P * dP
+        dlogV = 1/P * dP
         ddlogV = (ddP*P - dP**2)/P**2
 
         if (deriv==0) then
