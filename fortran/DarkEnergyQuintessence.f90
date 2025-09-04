@@ -799,9 +799,9 @@
         dP = this%a0 + 2*this%b0*(theta-this%n) + 3*this%c0*(theta-this%n)**2 + 4*this%d0*(theta-this%n)**3
         ddP = 2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2
 
-        logV = log(P)
-        dlogV = 1/P * dP
-        ddlogV = (ddP*P - dP**2)/P**2
+        logV = P
+        dlogV = dP
+        ddlogV = ddP
 
         if (deriv==0) then
             Vofphi = this%V0 * exp(logV)
