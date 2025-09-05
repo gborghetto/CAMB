@@ -789,7 +789,7 @@
     real(dl) phi,Vofphi
     real(dl) logV, dlogV, ddlogV
     integer deriv
-    real(dl) theta, costheta, sintheta, P, dP, ddP
+    real(dl) theta, costheta, sintheta, P, dP, ddP, Q, dQ
     real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
     ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
     ! m = m_theory/M_Pl
@@ -811,13 +811,19 @@
             Vofphi = this%V0 * exp(logV) * (ddlogV + dlogV**2)
         end if
     elseif (this%model_idx==6) then
-        ! epsilon = exp(-this%n*theta**2/(this%L**2))
+        P = 1 + this%a0*theta + this%b0*theta**2
+        dP = this%a0 +2*this%b0*theta
+        ddP = 2*this%b0
+
+        Q = 1 + this%c0 + this%d0*theta
+        dQ = this%d0
+
         if (deriv==0) then
-            Vofphi = this%V0*(1-theta**2/(this%n**2))**2*exp(this%c0*theta**2/(this%n**2))
+            Vofphi = this%V0*exp(P/exp(Q))
         else if (deriv ==1) then
-             Vofphi = 2*this%V0*exp(this%c0*theta**2/(this%n**2))*theta/(this%n**6)*(theta**2-this%n**2)*(2*this%n**2+this%c0*(theta**2-this%n**2))
+             Vofphi = this%V0 * exp(P/exp(Q)) * (dP - dQ*P)/exp(Q)
         else if (deriv ==2) then
-             Vofphi = 2*this%V0*exp(this%c0*theta**2/(this%n**2))/(this%n**8)*(6*theta**2*this%n**4-2*this%n**6+2*this%c0**2*(theta**3-theta*this%n**2)**2+this%c0*(9*theta**4*this%n**2-10*theta**2*this%n**4+this%n**6))
+             Vofphi = this%V0 * exp(P/exp(Q)) * (((dP-dQ*P)/exp(Q))**2 + (ddP-dQ*dP - dQ*(dP-dQ*P))/exp(Q))
         end if
     elseif (this%model_idx==5) then
         if (deriv==0) then
