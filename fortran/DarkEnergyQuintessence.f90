@@ -795,13 +795,13 @@
     ! m = m_theory/M_Pl
     theta = phi
     if (this%model_idx==7) then
-        P = 1+ this%a0*(theta-this%n) + this%b0*(theta-this%n)**2 + this%c0*(theta-this%n)**3 + this%d0*(theta-this%n)**4
-        dP = this%a0 + 2*this%b0*(theta-this%n) + 3*this%c0*(theta-this%n)**2 + 4*this%d0*(theta-this%n)**3
-        ddP = 2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2
+        logV = 1+ this%a0*(theta-this%n) + this%b0*(theta-this%n)**2 + this%c0*(theta-this%n)**3 + this%d0*(theta-this%n)**4
+        dlogV = this%a0 + 2*this%b0*(theta-this%n) + 3*this%c0*(theta-this%n)**2 + 4*this%d0*(theta-this%n)**3
+        ddlogV = 2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2
 
-        logV = P
-        dlogV = dP
-        ddlogV = ddP
+        !logV = P
+        !dlogV = dP
+        !ddlogV = ddP
 
         if (deriv==0) then
             Vofphi = this%V0 * exp(logV)
