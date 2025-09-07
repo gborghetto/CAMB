@@ -252,7 +252,7 @@ class QuintessenceModel(Quintessence):
     ] # type: ignore
     _fortran_class_name_ = 'TQuintessenceModel'
 
-    def set_params(self, n, a0=0, b0=0, c0=0, d0=0, V0=1e-8, theta_i=0.0,frac_lambda0=0.,model_idx=1):
+    def set_params(self, n=0, a0=0, b0=0, c0=0, d0=0, V0=1e-8, theta_i=0.0,frac_lambda0=0.,model_idx=1):
         self.n = n
         self.a0 = a0
         self.b0 = b0
