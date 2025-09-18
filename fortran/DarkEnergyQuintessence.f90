@@ -81,10 +81,11 @@
 
     type, extends(TQuintessence) :: TQuintessenceModel ! adding a new class for the pure exponential potential
         real(dl) :: n = 1_dl
-        real(dl) :: a0 = 1_dl
-        real(dl) :: b0 = 1_dl
-        real(dl) :: c0 = 1_dl
-        real(dl) :: d0 = 1_dl
+        real(dl) :: c1 = 1_dl
+        real(dl) :: c2 = 1_dl
+        real(dl) :: c3 = 1_dl
+        real(dl) :: c4 = 1_dl
+        real(dl) :: c5 = 1_dl
         real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
         real(dl) :: theta_i = 0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
@@ -794,10 +795,10 @@
     ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
     ! m = m_theory/M_Pl
     theta = phi
-    if (this%model_idx==7) then
-        logV = 1+ this%a0*(theta-this%n) + this%b0*(theta-this%n)**2 + this%c0*(theta-this%n)**3 + this%d0*(theta-this%n)**4
-        dlogV = this%a0 + 2*this%b0*(theta-this%n) + 3*this%c0*(theta-this%n)**2 + 4*this%d0*(theta-this%n)**3
-        ddlogV = 2*this%b0 + 6*this%c0*(theta-this%n) + 12*this%d0*(theta-this%n)**2
+    if (this%model_idx==6) then
+        logV = 1+ this%c1*(theta-this%n) + this%c2*(theta-this%n)**2 + this%c3*(theta-this%n)**3 + this%c4*(theta-this%n)**4 + this%c5*(theta-this%n)**5
+        dlogV = this%c1 + 2*this%c2*(theta-this%n) + 3*this%c3*(theta-this%n)**2 + 4*this%c4*(theta-this%n)**3 + 5*this%c5*(theta-this%n)**4
+        ddlogV = 2*this%c2 + 6*this%c3*(theta-this%n) + 12*this%c4*(theta-this%n)**2 + 20*this%c5*(theta-this%n)**3
 
         !logV = P
         !dlogV = dP
@@ -810,13 +811,13 @@
         else if (deriv ==2) then
             Vofphi = this%V0 * exp(logV) * (ddlogV + dlogV**2)
         end if
-    elseif (this%model_idx==6) then
-        P = 1 + this%a0*theta + this%b0*theta**2
-        dP = this%a0 +2*this%b0*theta
-        ddP = 2*this%b0
+    elseif (this%model_idx==5) then
+        P = 1 + this%c1*theta + this%c2*theta**2
+        dP = this%c1 +2*this%c2*theta
+        ddP = 2*this%c2
 
-        Q = 1 + this%c0 + this%d0*theta
-        dQ = this%d0
+        Q = 1 + this%c3 + this%c4*theta
+        dQ = this%c4
 
         if (deriv==0) then
             Vofphi = this%V0*exp(P/exp(Q))
@@ -824,14 +825,6 @@
              Vofphi = this%V0 * exp(P/exp(Q)) * (dP - dQ*P)/exp(Q)
         else if (deriv ==2) then
              Vofphi = this%V0 * exp(P/exp(Q)) * (((dP-dQ*P)/exp(Q))**2 + (ddP-dQ*dP - dQ*(dP-dQ*P))/exp(Q))
-        end if
-    elseif (this%model_idx==5) then
-        if (deriv==0) then
-            Vofphi = this%V0*(1 - (theta/this%n)**2 - this%c0/4*(theta/this%n)**4)**2 + this%frac_lambda0*this%State%grhov !units*this%m**2*this%f**2*(1 - cos(theta))**this%n + this%frac_lambda0*this%State%grhov
-        else if (deriv ==1) then
-            Vofphi = -this%V0/(2*this%n**8) * (2*this%n**2*theta+this%c0*theta**3) * (4*this%n**4-4*this%n**2*theta**2-this%c0*theta**4) !units*this%m**2*this%f*this%n*(1 - cos(theta))**(this%n-1)*sin(theta)
-        else if (deriv ==2) then
-            Vofphi = -this%V0/(2*this%n**8) * (8*this%n**6+12*(-2+this%c0)*this%n**4*theta**2-30*this%c0*this%n**2*theta**4-7*this%c0**2*theta**6)
         end if
     elseif (this%model_idx==4) then !Cosine, n = f
         theta = phi/this%n ! = phi/f

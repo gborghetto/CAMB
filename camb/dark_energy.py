@@ -230,10 +230,11 @@ class QuintessenceModel(Quintessence):
 
     _fields_ = [
         ("n", c_double, "lambda for the exponential potential"),
-        ("a0", c_double, "a0"),
-        ("b0", c_double, "b0"),
-        ("c0", c_double, "c0"),
-        ("d0", c_double, "c0"),
+        ("c1", c_double, "c1"),
+        ("c2", c_double, "c2"),
+        ("c3", c_double, "c3"),
+        ("c4", c_double, "c4"),
+        ("c5", c_double, "c5"),
         ("V0", c_double, "Overall potential amplitude "
                         " used for tuning to get correct DE density today"),
         ("theta_i", c_double, "phi_init initial field value"),
@@ -252,12 +253,13 @@ class QuintessenceModel(Quintessence):
     ] # type: ignore
     _fortran_class_name_ = 'TQuintessenceModel'
 
-    def set_params(self, n, a0=0, b0=0, c0=0, d0=0, V0=1e-8, theta_i=0.0,frac_lambda0=0.,model_idx=1):
+    def set_params(self, n, c1=0, c2=0, c3=0, c4=0, c5=0, V0=1e-8, theta_i=0.0,frac_lambda0=0.,model_idx=1):
         self.n = n
-        self.a0 = a0
-        self.b0 = b0
-        self.c0 = c0
-        self.d0 = d0
+        self.c1 = c1
+        self.c2 = c2
+        self.c3 = c3
+        self.c4 = c4
+        self.c5 = c5
         self.V0 = V0
         self.theta_i = theta_i
         self.frac_lambda0 = frac_lambda0
