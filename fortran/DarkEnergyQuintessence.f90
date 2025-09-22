@@ -790,7 +790,7 @@
     real(dl) phi,Vofphi
     real(dl) logV, dlogV, ddlogV
     integer deriv
-    real(dl) theta, costheta, sintheta, P, dP, ddP, Q, dQ, dQQ
+    real(dl) theta, costheta, sintheta, P, dP, ddP, Q, dQ, ddQ
     real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
     ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
     ! m = m_theory/M_Pl
@@ -816,9 +816,9 @@
         dP = this%c1 +2*this%c2*theta
         ddP = 2*this%c2
 
-        Q = 1 + this%c3*theta + this%c4*theta*+2
+        Q = 1 + this%c3*theta + this%c4*theta**2
         dQ = this%c3 + 2*this%c4*theta
-        dQQ = 2*this%c4
+        ddQ = 2*this%c4
 
         if (deriv==0) then
             Vofphi = this%V0*exp(P/exp(Q))
