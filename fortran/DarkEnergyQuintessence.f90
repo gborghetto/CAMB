@@ -86,6 +86,7 @@
         real(dl) :: c3 = 1_dl
         real(dl) :: c4 = 1_dl
         real(dl) :: c5 = 1_dl
+        real(dl) :: Aparam = 1_dl
         real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
         real(dl) :: theta_i = 0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
@@ -827,16 +828,18 @@
         else if (deriv ==2) then
              Vofphi = this%V0 * exp(P/exp(Q)) * (((dP-dQ*P)/exp(Q))**2 + (ddP - 2*dP*dQ - P*ddQ + P*dQ**2)/exp(Q))
         end if
-    elseif (this%model_idx==4) then !Cosine, n = f
+    elseif (this%model_idx==4) then
         theta = phi/this%n ! = phi/f
         costheta = cos(theta)
         sintheta = sin(theta)
         if (deriv==0) then
-            Vofphi = this%V0*(1 - costheta)+ this%frac_lambda0*this%State%grhov
+            Vofphi = this%V0 * (0.5_dl*theta**2 + this%c1*theta*costheta + this%Aparam)
         else if (deriv ==1) then
-            Vofphi = this%V0*sintheta/(this%n)
+            ! dV/dphi = (V0/f) * d/dtheta[0.5*theta^2 + c1*theta*cos(theta)]
+            Vofphi = this%V0/this%n * (theta + this%c1*(costheta - theta*sintheta))
         else if (deriv ==2) then
-            Vofphi = this%V0*costheta/(this%n)**2
+            ! d²V/dphi² = (V0/f²) * d²/dtheta²[0.5*theta^2 + c1*theta*cos(theta)]
+            Vofphi = this%V0/(this%n**2) * (1.0_dl - this%c1*(2.0_dl*sintheta + theta*costheta))
         end if
     elseif (this%model_idx==3) then !FT Hilltop, n = phi0
         if (deriv==0) then
@@ -919,6 +922,24 @@
         deallocate(this%ddphi_a,this%ddphidot_a, this%sampled_a)
     end if
     allocate(phi_a(npoints),phidot_a(npoints), sampled_a(npoints), fde(npoints))
+
+    if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0, n = ', this%V0,this%n ! just for testing
+    ! --------------- method to find A in potential #4 start -------------------------------------------
+    fmin = huge(1._dl)
+    nsteps = 20000
+    dtheta = 0.002_dl
+    do i = -nsteps/2, nsteps/2
+        theta_try = i * dtheta  ! theta_try is already dimensionless (phi/f)
+        fval = 0.5_dl*theta_try**2 + this%c1 * theta_try * cos(theta_try)
+        if (fval < fmin) then
+            fmin = fval
+            !write(*,*) "fmin =", fmin, "at theta =", theta_try
+        end if
+    end do
+
+    this%Aparam = -fmin
+    !write(*,*) "A parameter set to:", this%Aparam
+    ! --------------- method to find A in potential #4 end -------------------------------------------
 
     if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0, n = ', this%V0,this%n ! just for testing
 
@@ -1034,7 +1055,6 @@
     end if
 
     ! --------------- method 2 for initial conditions tuning V0 End ------------------------------
-
 
 
     y(1)=initial_phi

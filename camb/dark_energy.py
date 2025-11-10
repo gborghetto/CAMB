@@ -235,6 +235,7 @@ class QuintessenceModel(Quintessence):
         ("c3", c_double, "c3"),
         ("c4", c_double, "c4"),
         ("c5", c_double, "c5"),
+        ("Aparam", c_double, "Aparam"),
         ("V0", c_double, "Overall potential amplitude "
                         " used for tuning to get correct DE density today"),
         ("theta_i", c_double, "phi_init initial field value"),
