@@ -796,7 +796,7 @@
     ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
     ! m = m_theory/M_Pl
     theta = phi
-    if (this%model_idx==6) then
+    if (this%model_idx==6) then     !Taylor
         logV = 1+ this%c1*(theta-this%n) + this%c2*(theta-this%n)**2 + this%c3*(theta-this%n)**3 + this%c4*(theta-this%n)**4 + this%c5*(theta-this%n)**5
         dlogV = this%c1 + 2*this%c2*(theta-this%n) + 3*this%c3*(theta-this%n)**2 + 4*this%c4*(theta-this%n)**3 + 5*this%c5*(theta-this%n)**4
         ddlogV = 2*this%c2 + 6*this%c3*(theta-this%n) + 12*this%c4*(theta-this%n)**2 + 20*this%c5*(theta-this%n)**3
@@ -812,7 +812,7 @@
         else if (deriv ==2) then
             Vofphi = this%V0 * exp(logV) * (ddlogV + dlogV**2)
         end if
-    elseif (this%model_idx==5) then
+    elseif (this%model_idx==5) then !Pade
         P = 1 + this%c1*theta + this%c2*theta**2
         dP = this%c1 +2*this%c2*theta
         ddP = 2*this%c2
@@ -828,7 +828,7 @@
         else if (deriv ==2) then
              Vofphi = this%V0 * exp(P/exp(Q)) * (((dP-dQ*P)/exp(Q))**2 + (ddP - 2*dP*dQ - P*ddQ + P*dQ**2)/exp(Q))
         end if
-    elseif (this%model_idx==4) then
+    elseif (this%model_idx==4) then !Bumpy V
         theta = phi/this%n ! = phi/f
         costheta = cos(theta)
         sintheta = sin(theta)
@@ -841,13 +841,13 @@
             ! d²V/dphi² = (V0/f²) * d²/dtheta²[0.5*theta^2 + c1*theta*cos(theta)]
             Vofphi = this%V0/(this%n**2) * (1.0_dl - this%c1*(2.0_dl*sintheta + theta*costheta))
         end if
-    elseif (this%model_idx==3) then !FT Hilltop, n = phi0
+    elseif (this%model_idx==3) then !Double Exp V
         if (deriv==0) then
-            Vofphi = this%V0*(1 - (theta/this%n)**2 )**2 + this%frac_lambda0*this%State%grhov !units*this%m**2*this%f**2*(1 - cos(theta))**this%n + this%frac_lambda0*this%State%grhov
+            Vofphi = this%V0*(exp(-this%c1*theta) + this%c2*exp(this%c3*theta))
         else if (deriv ==1) then
-            Vofphi = -4*this%V0 * theta*(1-(theta/this%n)**2)/ (this%n)**2  !units*this%m**2*this%f*this%n*(1 - cos(theta))**(this%n-1)*sin(theta)
+            Vofphi = this%V0*(-this%c1*exp(-this%c1*theta) + this%c2*this%c3*exp(this%c3*theta))
         else if (deriv ==2) then
-            Vofphi = this%V0*(8*theta**2/(this%n)**4 - 4*(1-(theta/this%n)**2)/(this%n)**2 )  !-2*this%V0 / (this%n)**2
+            Vofphi = this%V0*(this%c1**2*exp(-this%c1*theta) + this%c2*this%c3**2*exp(this%c3*theta))
         end if
     elseif (this%model_idx==2) then !Sugra Hilltop, n = alpha
         if (deriv==0) then
