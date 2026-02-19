@@ -1087,14 +1087,14 @@
     end do
     end subroutine CAMBdata_DarkEnergyPhiPhidot
 
-    subroutine CAMBdata_DarkEnergyVphi(this, phi, Vphi, n, deriv) ! added for Vphi output
+    subroutine CAMBdata_DarkEnergyVphi(this, a, phi, Vphi, n, deriv) ! added for Vphi output
     class(CAMBdata) :: this
     integer, intent(in) :: n, deriv
-    real(dl), intent(in) :: phi(n)
+    real(dl), intent(in) :: a(n), phi(n)
     real(dl), intent(out) :: Vphi(n)
     integer i
     do i=1, n
-        Vphi(i) = this%CP%DarkEnergy%Vofphi(phi(i),deriv)
+        Vphi(i) = this%CP%DarkEnergy%Vofphi(a(i), phi(i),deriv)
     end do
     end subroutine CAMBdata_DarkEnergyVphi
 

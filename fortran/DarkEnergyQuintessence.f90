@@ -81,12 +81,6 @@
 
     type, extends(TQuintessence) :: TQuintessenceModel ! adding a new class for the pure exponential potential
         real(dl) :: n = 1_dl
-        real(dl) :: c1 = 1_dl
-        real(dl) :: c2 = 1_dl
-        real(dl) :: c3 = 1_dl
-        real(dl) :: c4 = 1_dl
-        real(dl) :: c5 = 1_dl
-        real(dl) :: Aparam = 1_dl
         real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
         real(dl) :: theta_i = 0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
@@ -116,13 +110,14 @@
     public TQuintessence, TEarlyQuintessence,TQuintessenceModel
     contains
 
-    function VofPhi(this, phi, deriv)
-    !Get the quintessence potential as function of phi
+    function VofPhi(this, a, phi, deriv)
+    !Get the quintessence potential as function of phi and scale factor a
     !The input variable phi is sqrt(8*Pi*G)*psi, where psi is the field
     !Returns (8*Pi*G)^(1-deriv/2)*d^{deriv}V(psi)/d^{deriv}psi evaluated at psi
     !return result is in 1/Mpc^2 units [so times (Mpc/c)^2 to get units in 1/Mpc^2]
     class(TQuintessence) :: this
     real(dl) phi,Vofphi
+    real(dl), intent(in) :: a
     integer deriv
 
     call MpiStop('Quintessence classes must override to provide VofPhi')
@@ -176,7 +171,7 @@
     elseif (a >= this%astart) then
         a2 = a**2
         call this%ValsAta(a,phi,phidot)
-        V = this%Vofphi(phi,0)
+        V = this%Vofphi(a,phi,0)
         grhov_t = phidot**2/2 + a2*V
         if (present(w)) then
             w = (phidot**2/2 - a2*V)/grhov_t
@@ -217,12 +212,12 @@
     phi = y(1)
     phidot = y(2)/a2
 
-    grhode=a2*(0.5d0*phidot**2 + a2*this%Vofphi(phi,0))
+    grhode=a2*(0.5d0*phidot**2 + a2*this%Vofphi(a,phi,0))
     tot = this%state%grho_no_de(a) + grhode
 
     adot=sqrt(tot/3.0d0)
     yprime(1)=phidot/adot !d phi /d a
-    yprime(2)= -a2**2*this%Vofphi(phi,1)/adot
+    yprime(2)= -a2**2*this%Vofphi(a,phi,1)/adot
 
     end subroutine EvolveBackground
 
@@ -280,7 +275,7 @@
     call this%ValsAta(a,phi,phidot)
     clxq=ay(w_ix)
     vq=ay(w_ix+1)
-    dgrhoe= phidot*vq +clxq*a**2*this%Vofphi(phi,1)
+    dgrhoe= phidot*vq +clxq*a**2*this%Vofphi(a,phi,1)
     dgqe= k*phidot*clxq
 
     end subroutine TQuintessence_PerturbedStressEnergy
@@ -299,18 +294,19 @@
     clxq=y(w_ix)
     vq=y(w_ix+1)
     ayprime(w_ix)= vq
-    ayprime(w_ix+1) = - 2*adotoa*vq - k*z*phidot - k**2*clxq - a**2*clxq*this%Vofphi(phi,2)
+    ayprime(w_ix+1) = - 2*adotoa*vq - k*z*phidot - k**2*clxq - a**2*clxq*this%Vofphi(a,phi,2)
 
     end subroutine TQuintessence_PerturbationEvolve
 
     ! Early Quintessence example, axion potential from e.g. arXiv: 1908.06995
 
-    function TEarlyQuintessence_VofPhi(this, phi, deriv) result(VofPhi)
+    function TEarlyQuintessence_VofPhi(this, a, phi, deriv) result(VofPhi)
     !The input variable phi is sqrt(8*Pi*G)*psi
     !Returns (8*Pi*G)^(1-deriv/2)*d^{deriv}V(psi)/d^{deriv}psi evaluated at psi
     !return result is in 1/Mpc^2 units [so times (Mpc/c)^2 to get units in 1/Mpc^2]
     class(TEarlyQuintessence) :: this
     real(dl) phi,Vofphi
+    real(dl), intent(in) :: a
     integer deriv
     real(dl) theta, costheta
     real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
@@ -510,7 +506,7 @@
 
         !Define fde as ratio of early dark energy density to total
         fde(ix) = 1/((this%state%grho_no_de(sampled_a(ix)) +  this%frac_lambda0*this%State%grhov*a2**2) &
-            /(a2*(0.5d0* phidot_a(ix)**2 + a2*this%Vofphi(y(1),0))) + 1)
+            /(a2*(0.5d0* phidot_a(ix)**2 + a2*this%Vofphi(sampled_a(ix), y(1),0))) + 1)
         if (max_ix==0 .and. ix > 2 .and. fde(ix)< fde(ix-1)) then
             max_ix = ix-1
         end if
@@ -552,7 +548,7 @@
         this%phidot_a(ix)=y(2)/a2
 
         this%fde(ix) = 1/((this%state%grho_no_de(aend) +  this%frac_lambda0*this%State%grhov*a2**2) &
-            /(a2*(0.5d0* this%phidot_a(ix)**2 + a2*this%Vofphi(y(1),0))) + 1)
+            /(a2*(0.5d0* this%phidot_a(ix)**2 + a2*this%Vofphi(aend, y(1),0))) + 1)
         if (max_ix==0 .and. this%fde(ix)< this%fde(ix-1)) then
             max_ix = ix-1
         end if
@@ -710,7 +706,7 @@
         if (.not. this%check_error(exp(afrom), exp(aend))) return
         call EvolveBackgroundLog(this,NumEqs,aend,y,w(:,1))
         fde(ix) = 1/((this%state%grho_no_de(sampled_a(ix)) +  this%frac_lambda0*this%State%grhov*a2**2) &
-            /((0.5d0*y(2)**2/a2 + a2**2*this%Vofphi(y(1),0))) + 1)
+            /((0.5d0*y(2)**2/a2 + a2**2*this%Vofphi(sampled_a(ix),y(1),0))) + 1)
         if (max_ix==0 .and. ix > 2 .and. fde(ix)< fde(ix-1)) then
             max_ix = ix-1
         end if
@@ -750,7 +746,7 @@
     call this%ValsAta(a, aphi, aphidot)
     a2 = a**2
     fdeAta = 1/((this%state%grho_no_de(a) +  this%frac_lambda0*this%State%grhov*a2**2) &
-        /(a2*(0.5d0* aphidot**2 + a2*this%Vofphi(aphi,0))) + 1)
+        /(a2*(0.5d0* aphidot**2 + a2*this%Vofphi(a, aphi,0))) + 1)
     end function fdeAta
 
     subroutine TEarlyQuintessence_ReadParams(this, Ini)
@@ -783,79 +779,26 @@
 
 
 
-    function TQuintessenceModel_VofPhi(this, phi, deriv) result(VofPhi)
+    function TQuintessenceModel_VofPhi(this, a, phi, deriv) result(VofPhi)
     !The input variable phi is sqrt(8*Pi*G)*psi
     !Returns (8*Pi*G)^(1-deriv/2)*d^{deriv}V(psi)/d^{deriv}psi evaluated at psi
     !return result is in 1/Mpc^2 units [so times (Mpc/c)^2 to get units in 1/Mpc^2]
     class(TQuintessenceModel) :: this
     real(dl) phi,Vofphi
-    real(dl) logV, dlogV, ddlogV
+    real(dl), intent(in) :: a
     integer deriv
-    real(dl) theta, costheta, sintheta, P, dP, ddP, Q, dQ, ddQ
+    real(dl) theta, costheta, sintheta
     real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
     ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
     ! m = m_theory/M_Pl
     theta = phi
-    if (this%model_idx==6) then     !Taylor
-        logV = 1+ this%c1*(theta-this%n) + this%c2*(theta-this%n)**2 + this%c3*(theta-this%n)**3 + this%c4*(theta-this%n)**4 + this%c5*(theta-this%n)**5
-        dlogV = this%c1 + 2*this%c2*(theta-this%n) + 3*this%c3*(theta-this%n)**2 + 4*this%c4*(theta-this%n)**3 + 5*this%c5*(theta-this%n)**4
-        ddlogV = 2*this%c2 + 6*this%c3*(theta-this%n) + 12*this%c4*(theta-this%n)**2 + 20*this%c5*(theta-this%n)**3
-
-        !logV = P
-        !dlogV = dP
-        !ddlogV = ddP
-
+    if (this%model_idx==2) then     !Time-dependendt potential
         if (deriv==0) then
-            Vofphi = this%V0 * exp(logV)
+            Vofphi = this%V0*exp(-this%n*theta)*exp(3*(-1.1)*a)*a**(3*(1-0.6+1.1))
         else if (deriv ==1) then
-            Vofphi = this%V0 * dlogV * exp(logV)
+            Vofphi = -this%V0*this%n*exp(-this%n*theta)*exp(3*(-1.1)*a)*a**(3*(1-0.6+1.1)) !units*this%m**2*this%f*this%n*(1 - cos(theta))**(this%n-1)*sin(theta)
         else if (deriv ==2) then
-            Vofphi = this%V0 * exp(logV) * (ddlogV + dlogV**2)
-        end if
-    elseif (this%model_idx==5) then !Pade
-        P = 1 + this%c1*theta + this%c2*theta**2
-        dP = this%c1 +2*this%c2*theta
-        ddP = 2*this%c2
-
-        Q = 1 + this%c3*theta + this%c4*theta**2
-        dQ = this%c3 + 2*this%c4*theta
-        ddQ = 2*this%c4
-
-        if (deriv==0) then
-            Vofphi = this%V0*exp(P/exp(Q))
-        else if (deriv ==1) then
-             Vofphi = this%V0 * exp(P/exp(Q)) * (dP - dQ*P)/exp(Q)
-        else if (deriv ==2) then
-             Vofphi = this%V0 * exp(P/exp(Q)) * (((dP-dQ*P)/exp(Q))**2 + (ddP - 2*dP*dQ - P*ddQ + P*dQ**2)/exp(Q))
-        end if
-    elseif (this%model_idx==4) then !Bumpy V
-        theta = phi/this%n ! = phi/f
-        costheta = cos(theta)
-        sintheta = sin(theta)
-        if (deriv==0) then
-            Vofphi = this%V0 * (0.5_dl*theta**2 + this%c1*theta*costheta + this%Aparam)
-        else if (deriv ==1) then
-            ! dV/dphi = (V0/f) * d/dtheta[0.5*theta^2 + c1*theta*cos(theta)]
-            Vofphi = this%V0/this%n * (theta + this%c1*(costheta - theta*sintheta))
-        else if (deriv ==2) then
-            ! d²V/dphi² = (V0/f²) * d²/dtheta²[0.5*theta^2 + c1*theta*cos(theta)]
-            Vofphi = this%V0/(this%n**2) * (1.0_dl - this%c1*(2.0_dl*sintheta + theta*costheta))
-        end if
-    elseif (this%model_idx==3) then !Double Exp V
-        if (deriv==0) then
-            Vofphi = this%V0*(exp(-this%c1*theta) + this%c2*exp(this%c3*theta) + this%n)
-        else if (deriv ==1) then
-            Vofphi = this%V0*(-this%c1*exp(-this%c1*theta) + this%c2*this%c3*exp(this%c3*theta))
-        else if (deriv ==2) then
-            Vofphi = this%V0*(this%c1**2*exp(-this%c1*theta) + this%c2*this%c3**2*exp(this%c3*theta))
-        end if
-    elseif (this%model_idx==2) then !Sugra Hilltop, n = alpha
-        if (deriv==0) then
-            Vofphi = this%V0*exp(-sqrt(2.)*theta)*exp(-2.*this%n*exp(sqrt(2.)*theta))*(1.+4.*this%n**2*exp(2.*sqrt(2.)*theta)-3.+4.*this%n*exp(sqrt(2.)*theta))
-        else if (deriv ==1) then
-            Vofphi = -2.*sqrt(2.)*exp(-2.*exp(sqrt(2.)*theta)*this%n-sqrt(2.)*theta)*(-1.-2.*exp(sqrt(2.)*theta)*this%n+2.*exp(2.*sqrt(2.)*theta)*this%n**2+4.*exp(3.*sqrt(2.)*theta)*this%n**3)*this%V0
-        else if (deriv ==2) then
-            Vofphi = 4.*exp(-2.*exp(sqrt(2.)*theta)*this%n-sqrt(2.)*theta)*(-1.-2.*exp(sqrt(2.)*theta)*this%n-6.*exp(2.*sqrt(2.)*theta)*this%n**2-4.*exp(3.*sqrt(2.)*theta)*this%n**3+8.*exp(4.*sqrt(2.)*theta)*this%n**4)*this%V0
+            Vofphi = this%V0*this%n**2*exp(-this%n*theta)*exp(3*(-1.1)*a)*a**(3*(1-0.6+1.1))
         end if
     elseif (this%model_idx==1) then !Exponential Quintessence, n = lambda
         if (deriv==0) then
@@ -922,24 +865,6 @@
         deallocate(this%ddphi_a,this%ddphidot_a, this%sampled_a)
     end if
     allocate(phi_a(npoints),phidot_a(npoints), sampled_a(npoints), fde(npoints))
-
-    if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0, n = ', this%V0,this%n ! just for testing
-    ! --------------- method to find A in potential #4 start -------------------------------------------
-    fmin = huge(1._dl)
-    nsteps = 20000
-    dtheta = 0.002_dl
-    do i = -nsteps/2, nsteps/2
-        theta_try = i * dtheta  ! theta_try is already dimensionless (phi/f)
-        fval = 0.5_dl*theta_try**2 + this%c1 * theta_try * cos(theta_try)
-        if (fval < fmin) then
-            fmin = fval
-            !write(*,*) "fmin =", fmin, "at theta =", theta_try
-        end if
-    end do
-
-    this%Aparam = -fmin
-    !write(*,*) "A parameter set to:", this%Aparam
-    ! --------------- method to find A in potential #4 end -------------------------------------------
 
     if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0, n = ', this%V0,this%n ! just for testing
 
@@ -1091,7 +1016,7 @@
 
         !Define fde as ratio of early dark energy density to total
         fde(ix) = 1/((this%state%grho_no_de(sampled_a(ix)) +  this%frac_lambda0*this%State%grhov*a2**2) &
-            /(a2*(0.5d0* phidot_a(ix)**2 + a2*this%Vofphi(y(1),0))) + 1)
+            /(a2*(0.5d0* phidot_a(ix)**2 + a2*this%Vofphi(sampled_a(ix),y(1),0))) + 1)
         if (max_ix==0 .and. ix > 2 .and. fde(ix)< fde(ix-1)) then
             max_ix = ix-1
         end if
@@ -1133,7 +1058,7 @@
         this%phidot_a(ix)=y(2)/a2
 
         this%fde(ix) = 1/((this%state%grho_no_de(aend) +  this%frac_lambda0*this%State%grhov*a2**2) &
-            /(a2*(0.5d0* this%phidot_a(ix)**2 + a2*this%Vofphi(y(1),0))) + 1)
+            /(a2*(0.5d0* this%phidot_a(ix)**2 + a2*this%Vofphi(aend,y(1),0))) + 1)
         if (max_ix==0 .and. this%fde(ix)< this%fde(ix-1)) then
             max_ix = ix-1
         end if
@@ -1342,11 +1267,6 @@
     call this%TDarkEnergyModel%ReadParams(Ini)
     this%V0 = Ini%Read_Double('V0', 1d-7)
     this%n = Ini%Read_Double('nq', 1.d0)
-    this%c1 = Ini%Read_Double('c1', 1.d0)
-    this%c2 = Ini%Read_Double('c2', 1.d0)
-    this%c3 = Ini%Read_Double('c3', 1.d0)
-    this%c4 = Ini%Read_Double('c4', 1.d0)
-    this%c5 = Ini%Read_Double('c5', 1.d0)
     this%theta_i = Ini%Read_Double('theta_i',0.d0)
     this%model_idx = Ini%Read_Int('qmodel',1)
 
@@ -1391,7 +1311,7 @@
     call dverk(this,NumEqs,EvolveBackground,ast,y,1._dl,atol,ind,c,NumEqs,w)
     call EvolveBackground(this,NumEqs,1._dl,y,w(:,1))
 
-    GetOmegaFromInitial=(0.5d0*y(2)**2 + this%Vofphi(y(1),0))/this%State%grhocrit !(3*adot**2)
+    GetOmegaFromInitial=(0.5d0*y(2)**2 + this%Vofphi(1._dl,y(1),0))/this%State%grhocrit !(3*adot**2)
 
     end function GetOmegaFromInitial
     end module Quintessence

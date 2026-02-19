@@ -18,8 +18,8 @@
     procedure :: PerturbationEvolve
     procedure :: PrintFeedback
     ! do not have to implement w_de or grho_de if BackgroundDensityAndPressure is inherited directly
-    procedure :: w_de
-    procedure :: grho_de
+    procedure :: w_de => TDarkEnergyModel_w_de !procedure :: w_de
+    procedure :: grho_de => TDarkEnergyModel_grho_de !procedure :: grho_de
     procedure :: Effective_w_wa !Used as approximate values for non-linear corrections
     procedure :: ValsAta !get phi and phi' at scale factor a, e.g. by interpolation in precomputed table, only wors for Quintessence models which must override this in subclass ! added for phiphidot output
     procedure :: Vofphi
@@ -42,8 +42,10 @@
     procedure :: w_de => TDarkEnergyEqnOfState_w_de
     procedure :: grho_de => TDarkEnergyEqnOfState_grho_de
     procedure :: Effective_w_wa => TDarkEnergyEqnOfState_Effective_w_wa
+#ifdef __GFORTRAN__
+    final :: TDarkEnergyEqnOfState_Free ! safer for gcc mem-leak bug
+#endif
     end type TDarkEnergyEqnOfState
-
     public TDarkEnergyModel, TDarkEnergyEqnOfState
     contains
 
@@ -74,13 +76,14 @@
     aphidot = 0
     end subroutine ValsAta
 
-    function Vofphi(this, phi, deriv)
+    function Vofphi(this, a, phi, deriv)
     !Get the quintessence potential as function of phi
     !The input variable phi is sqrt(8*Pi*G)*psi, where psi is the field
     !Returns (8*Pi*G)^(1-deriv/2)*d^{deriv}V(psi)/d^{deriv}psi evaluated at psi
     !return result is in 1/Mpc^2 units [so times (Mpc/c)^2 to get units in 1/Mpc^2]
     class(TDarkEnergyModel) :: this
     real(dl) phi,Vofphi
+    real(dl), intent(in) :: a
     integer deriv
     Vofphi = 0
     call MpiStop('Quintessence classes must override to provide VofPhi')
@@ -283,7 +286,7 @@
     if(.not. this%use_tabulated_w)then
         this%w_lam = Ini%Read_Double('w', -1.d0)
         this%wa = Ini%Read_Double('wa', 0.d0)
-        ! trap dark energy becoming important at high redshift 
+        ! trap dark energy becoming important at high redshift
         ! (will still work if this test is removed in some cases)
         if (this%w_lam + this%wa > 0) &
              error stop 'w + wa > 0, giving w>0 at high redshift'
