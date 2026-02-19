@@ -843,7 +843,7 @@
         end if
     elseif (this%model_idx==3) then !Double Exp V
         if (deriv==0) then
-            Vofphi = this%V0*(exp(-this%c1*theta) + this%c2*exp(this%c3*theta))
+            Vofphi = this%V0*(exp(-this%c1*theta) + this%c2*exp(this%c3*theta) + this%n)
         else if (deriv ==1) then
             Vofphi = this%V0*(-this%c1*exp(-this%c1*theta) + this%c2*this%c3*exp(this%c3*theta))
         else if (deriv ==2) then
