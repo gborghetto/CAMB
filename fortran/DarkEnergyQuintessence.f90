@@ -18,11 +18,13 @@
     !initial conditions to find what is required to give that Omega_Q today after evolution.
 
     module Quintessence
+    use MpiUtils, only : MpiStop
     use DarkEnergyInterface
     use results
     use constants
     use classes
     use Interpolation
+    use PotentialInterpolator, only: PotentialInterpolator1D
     implicit none
     private
 
@@ -79,35 +81,36 @@
     procedure :: calc_zc_fde
     end type TEarlyQuintessence
 
-    type, extends(TQuintessence) :: TQuintessenceModel ! adding a new class for the pure exponential potential
-        real(dl) :: n = 1_dl
+    type, extends(TQuintessence) :: TQuintessenceInterp ! new class for the interpolated potential
+        real(dl), dimension(:), allocatable :: a_train
+        real(dl), dimension(:), allocatable :: B_train
+        real(dl), dimension(:), allocatable :: dB_train
+        real(dl), dimension(:), allocatable :: ddB_train
         real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
-        real(dl) :: theta_i = 0_dl !initial field value
+        real(dl) :: n = 1.0_dl
+        real(dl) :: theta_i = 0.0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
-        ! logical :: use_zc = .false. !adjust m to fit zc
-        ! real(dl) :: zc, fde_zc !redshift for peak f_de and f_de at that redshift
-        integer :: npoints = 6000 !baseline number of log a steps; will be increased if needed when there are oscillations
-        integer :: min_steps_per_osc = 10
-        integer :: model_idx = 1 ! which quintessence model (VofPhi) to use
+        integer :: npoints = 5000 !baseline number of log a steps; will be increased if needed when there are oscillations
+        integer :: min_steps_per_osc = 5
         real(dl), dimension(:), allocatable :: fde, ddfde
-        real(dl) :: omega_tol = 1d-5 !tolerance for OmegaDE
+        real(dl) :: omega_tol = 1d-6 !tolerance for OmegaDE
         real(dl) :: atol = 1e-8_dl
+        type(PotentialInterpolator1D) :: B_interpolator
+        type(PotentialInterpolator1D) :: dB_interpolator
+        type(PotentialInterpolator1D) :: ddB_interpolator
     contains
-    procedure :: Vofphi => TQuintessenceModel_VofPhi
-    procedure :: Init => TQuintessenceModel_Init
-    procedure :: ReadParams =>  TQuintessenceModel_ReadParams
-    procedure, nopass :: PythonClass => TQuintessenceModel_PythonClass
-    procedure, nopass :: SelfPointer => TQuintessenceModel_SelfPointer
-    ! procedure, private :: fdeAtaQ
-    ! procedure, private :: fde_peakQ
+    procedure :: Vofphi => TQuintessenceInterp_VofPhi
+    procedure :: Init => TQuintessenceInterp_Init
+    procedure :: ReadParams =>  TQuintessenceInterp_ReadParams
+    procedure, nopass :: PythonClass => TQuintessenceInterp_PythonClass
+    procedure, nopass :: SelfPointer => TQuintessenceInterp_SelfPointer
     procedure, private :: check_errorQ
-    ! procedure :: calc_zc_fdeQ
 
-    end type TQuintessenceModel
+    end type TQuintessenceInterp
 
     procedure(TClassDverk) :: dverk
 
-    public TQuintessence, TEarlyQuintessence,TQuintessenceModel
+    public TQuintessence, TEarlyQuintessence,TQuintessenceInterp
     contains
 
     function VofPhi(this, a, phi, deriv)
@@ -214,6 +217,20 @@
 
     grhode=a2*(0.5d0*phidot**2 + a2*this%Vofphi(a,phi,0))
     tot = this%state%grho_no_de(a) + grhode
+    ! write (*,*) 'EvolveBackground: a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
+
+    if (grhode < 0.0_dl) then
+        global_error_flag = error_darkenergy
+        global_error_message= 'TQuintessence EvolveBackground: negative grhode'
+        grhode = 0.0_dl
+        ! if (FeedbackLevel > 0) then
+        !     write(*,*) 'TQuintessence EvolveBackground: negative grhode'
+        !     write(*,*) 'a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
+        ! end if
+        ! stop 'TQuintessence EvolveBackground: negative grhode'
+        ! error stop 'TQuintessence EvolveBackground: negative grhode'
+        ! return
+    end if
 
     adot=sqrt(tot/3.0d0)
     yprime(1)=phidot/adot !d phi /d a
@@ -226,7 +243,7 @@
     class(TQuintessence) :: this
     real(dl) :: phi
 
-    TQuintessence_phidot_start = 0
+    TQuintessence_phidot_start = 0.0_dl
 
     end function TQuintessence_phidot_start
 
@@ -779,43 +796,30 @@
 
 
 
-    function TQuintessenceModel_VofPhi(this, a, phi, deriv) result(VofPhi)
+    function TQuintessenceInterp_VofPhi(this, a, phi, deriv) result(VofPhi)
     !The input variable phi is sqrt(8*Pi*G)*psi
     !Returns (8*Pi*G)^(1-deriv/2)*d^{deriv}V(psi)/d^{deriv}psi evaluated at psi
     !return result is in 1/Mpc^2 units [so times (Mpc/c)^2 to get units in 1/Mpc^2]
-    class(TQuintessenceModel) :: this
+    class(TQuintessenceInterp) :: this
     real(dl) phi,Vofphi
     real(dl), intent(in) :: a
-    integer deriv
-    real(dl) theta, costheta, sintheta
-    real(dl), parameter :: units = MPC_in_sec**2 /Tpl**2  !convert to units of 1/Mpc^2
-    ! Assume f = sqrt(kappa)*f_theory = f_theory/M_pl
-    ! m = m_theory/M_Pl
-    theta = phi
-    if (this%model_idx==2) then     !Time-dependendt potential
-        if (deriv==0) then
-            Vofphi = this%V0*exp(-this%n*theta)*exp(3*(-1.1)*a)*a**(3*(1-0.6+1.1))
-        else if (deriv ==1) then
-            Vofphi = -this%V0*this%n*exp(-this%n*theta)*exp(3*(-1.1)*a)*a**(3*(1-0.6+1.1)) !units*this%m**2*this%f*this%n*(1 - cos(theta))**(this%n-1)*sin(theta)
-        else if (deriv ==2) then
-            Vofphi = this%V0*this%n**2*exp(-this%n*theta)*exp(3*(-1.1)*a)*a**(3*(1-0.6+1.1))
-        end if
-    elseif (this%model_idx==1) then !Exponential Quintessence, n = lambda
-        if (deriv==0) then
-            Vofphi = this%V0*exp(-this%n*theta) + this%frac_lambda0*this%State%grhov !units*this%m**2*this%f**2*(1 - cos(theta))**this%n + this%frac_lambda0*this%State%grhov
-        else if (deriv ==1) then
-            Vofphi = -this%V0*this%n*exp(-this%n*theta) !units*this%m**2*this%f*this%n*(1 - cos(theta))**(this%n-1)*sin(theta)
-        else if (deriv ==2) then
-            Vofphi = this%V0*this%n**2*exp(-this%n*theta)
-        end if
-    else
-        stop 'Must provide a valid Quintessence model to use'
-    end if
-    end function TQuintessenceModel_VofPhi
+    integer :: deriv
+    select case(deriv)
+      case (0)
+        Vofphi = this%V0*exp(-this%n*phi) * this%B_interpolator%interpolate(a)
+      case (1)
+        Vofphi = -this%V0*this%n*exp(-this%n*phi) * this%B_interpolator%interpolate(a)
+      case (2)
+        Vofphi = this%V0*this%n**2*exp(-this%n*phi) * this%B_interpolator%interpolate(a)
+      case default
+        stop 'Invalid deriv in interpolated VofPhi'
+      end select
+    !   convert to 1/Mpc^2 units as before
+  end function TQuintessenceInterp_VofPhi
 
-    subroutine TQuintessenceModel_Init(this, State)
+    subroutine TQuintessenceInterp_Init(this, State)
     use Powell
-    class(TQuintessenceModel), intent(inout) :: this
+    class(TQuintessenceInterp), intent(inout) :: this
     class(TCAMBdata), intent(in), target :: State
     real(dl) aend, afrom
     integer, parameter ::  NumEqs=2
@@ -832,8 +836,15 @@
     Type(TTimer) :: Timer
     Type(TNEWUOA) :: Minimize
     real(dl) log_params(2), param_min(2), param_max(2)
-    real(dl) ::  theta_best, theta_try, fval, fmin, theta_step, dtheta
+    !real(dl) ::  theta_best, theta_try, fval, fmin, theta_step, dtheta
     integer :: nsteps
+
+    call this%B_interpolator%init(this%a_train,this%B_train)
+    call this%dB_interpolator%init(this%a_train,this%dB_train)
+    call this%ddB_interpolator%init(this%a_train,this%ddB_train)
+
+    if (FeedbackLevel > 0) write(*,*) 'Initialized Quintessence interpolation with', size(this%a_train), 'points from ', this%a_train(1), ' to ', this%a_train(size(this%a_train))
+
 
 
     !if (this%model_idx==4) then !Cosine, n = f
@@ -866,7 +877,7 @@
     end if
     allocate(phi_a(npoints),phidot_a(npoints), sampled_a(npoints), fde(npoints))
 
-    if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0, n = ', this%V0,this%n ! just for testing
+    if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0', this%V0,this%n ! just for testing
 
     initial_phi = this%theta_i
     astart = this%astart
@@ -913,8 +924,8 @@
     ! --------------- method 2 for initial conditions tuning V0 using Binary search, need to cleanup the implementation------------------------------
     ! this%V0 = 1d-7
     ! om1= this%GetOmegaFromInitial(astart,initial_phi,initial_phidot,atol)
-    logV0_low = -15.0_dl
-    logV0_high = -1_dl
+    logV0_low = -20.0_dl
+    logV0_high = 20_dl
     logV0 = this%V0
     ! if (FeedbackLevel > 1) write (*,*)  'required DE, first trial:', this%State%omega_de, om1
     if (abs(om_in-this%State%omega_de) > this%omega_tol) then
@@ -1088,16 +1099,21 @@
     !     write(*,*) 'TEarlyQuintessence zc, fde used', this%zc, this%fde_zc
     ! end if
 
-    end subroutine TQuintessenceModel_Init
+    end subroutine TQuintessenceInterp_Init
 
     logical function check_errorQ(this, afrom, aend)
-    class(TQuintessenceModel) :: this
+    class(TQuintessenceInterp) :: this
     real(dl) afrom, aend
 
     if (global_error_flag/=0) then
-        write(*,*) 'TQuintessenceModel error integrating', afrom, aend
-        write(*,*) this%n, this%V0, this%theta_i
-        stop
+        if (FeedbackLevel > 0) then
+            write(*,*) 'TQuintessenceInterp error in integration'
+            write(*,*) 'afrom, aend = ', afrom, aend
+            write(*,*) 'V0, theta_i = ', this%V0, this%theta_i
+            write(*,*) 'Error flag = ', global_error_flag
+            write(*,*) 'Error message = ', global_error_message
+        end if
+        ! stop
         check_errorQ = .false.
         return
     end if
@@ -1259,37 +1275,36 @@
     !     /(a2*(0.5d0* aphidot**2 + a2*this%Vofphi(aphi,0))) + 1)
     ! end function fdeAtaQ
 
-    subroutine TQuintessenceModel_ReadParams(this, Ini)
+    subroutine TQuintessenceInterp_ReadParams(this, Ini)
     use IniObjects
-    class(TQuintessenceModel) :: this
+    class(TQuintessenceInterp) :: this
     class(TIniFile), intent(in) :: Ini
 
     call this%TDarkEnergyModel%ReadParams(Ini)
     this%V0 = Ini%Read_Double('V0', 1d-7)
-    this%n = Ini%Read_Double('nq', 1.d0)
+    this%n = Ini%Read_Double('n',0.d0)
     this%theta_i = Ini%Read_Double('theta_i',0.d0)
-    this%model_idx = Ini%Read_Int('qmodel',1)
 
-    end subroutine TQuintessenceModel_ReadParams
+    end subroutine TQuintessenceInterp_ReadParams
 
 
-    function TQuintessenceModel_PythonClass()
-    character(LEN=:), allocatable :: TQuintessenceModel_PythonClass
+    function TQuintessenceInterp_PythonClass()
+    character(LEN=:), allocatable :: TQuintessenceInterp_PythonClass
 
-    TQuintessenceModel_PythonClass = 'QuintessenceModel'
+    TQuintessenceInterp_PythonClass = 'QuintessenceInterp'
 
-    end function TQuintessenceModel_PythonClass
+    end function TQuintessenceInterp_PythonClass
 
-    subroutine TQuintessenceModel_SelfPointer(cptr,P)
+    subroutine TQuintessenceInterp_SelfPointer(cptr,P)
     use iso_c_binding
     Type(c_ptr) :: cptr
-    Type (TQuintessenceModel), pointer :: PType
+    Type (TQuintessenceInterp), pointer :: PType
     class (TPythonInterfacedClass), pointer :: P
 
     call c_f_pointer(cptr, PType)
     P => PType
 
-    end subroutine TQuintessenceModel_SelfPointer
+    end subroutine TQuintessenceInterp_SelfPointer
 
 
 

@@ -1,0 +1,440 @@
+x**8
+x**2
+exp(4*x)
+log(x)**4
+x**2
+sqrt(x)
+exp(x)
+Abs(log(x))
+exp(2*x**2)
+exp(2*sqrt(x))
+exp(2*exp(x))
+x**2
+log(x**2)**2
+log(sqrt(x))**2
+x**2
+log(Abs(log(x)))**2
+x**2
+sqrt(x)
+exp(x)
+Abs(log(x))
+sqrt(x)
+pow(x,(1/8))
+exp(x/4)
+pow(Abs(log(x)),(1/4))
+exp(x**2/2)
+exp(sqrt(x)/2)
+exp(exp(x)/2)
+sqrt(x)
+sqrt(Abs(log(x**2)))
+sqrt(Abs(log(sqrt(x))))
+sqrt(x)
+sqrt(Abs(log(Abs(log(x)))))
+exp(x**4)
+exp(x)
+exp(exp(2*x))
+exp(log(x)**2)
+exp(x)
+exp(pow(x,(1/4)))
+exp(exp(x/2))
+exp(sqrt(Abs(log(x))))
+exp(exp(x**2))
+exp(exp(sqrt(x)))
+exp(exp(exp(x)))
+exp(x)
+x**2
+sqrt(x)
+exp(x)
+Abs(log(x))
+log(x**4)
+log(x)
+2*x
+log(log(x)**2)
+log(x)
+log(pow(x,(1/4)))
+x/2
+log(sqrt(Abs(log(x))))
+x**2
+sqrt(x)
+exp(x)
+log(x)
+log(Abs(log(x**2)))
+log(Abs(log(sqrt(x))))
+log(x)
+log(Abs(log(Abs(log(x)))))
+a0**8
+a0**2
+exp(4*a0)
+log(Abs(a0))**4
+a0**2
+sqrt(Abs(a0))
+exp(a0)
+Abs(log(Abs(a0)))
+exp(2*a0**2)
+exp(2*sqrt(Abs(a0)))
+exp(2*exp(a0))
+a0**2
+log(a0**2)**2
+log(sqrt(Abs(a0)))**2
+a0**2
+log(Abs(log(Abs(a0))))**2
+a0**2
+sqrt(Abs(a0))
+exp(a0)
+sqrt(Abs(log(Abs(a0))**2))
+sqrt(Abs(a0))
+pow(Abs(a0),(1/8))
+exp(a0/4)
+pow(Abs(log(Abs(a0))),(1/4))
+exp(a0**2/2)
+exp(sqrt(Abs(a0))/2)
+exp(exp(a0)/2)
+sqrt(Abs(a0))
+sqrt(Abs(log(a0**2)))
+sqrt(Abs(log(sqrt(Abs(a0)))))
+sqrt(Abs(a0))
+sqrt(Abs(log(Abs(log(Abs(a0))))))
+exp(a0**4)
+exp(Abs(a0))
+exp(exp(2*a0))
+exp(log(Abs(a0))**2)
+exp(Abs(a0))
+exp(pow(Abs(a0),(1/4)))
+exp(exp(a0/2))
+exp(sqrt(Abs(log(Abs(a0)))))
+exp(exp(a0**2))
+exp(exp(sqrt(Abs(a0))))
+exp(exp(exp(a0)))
+exp(Abs(a0))
+a0**2
+sqrt(Abs(a0))
+exp(a0)
+Abs(log(Abs(a0)))
+log(a0**4)
+log(Abs(a0))
+2*a0
+log(Abs(log(Abs(a0))**2))
+log(Abs(a0))
+log(pow(Abs(a0),(1/4)))
+a0/2
+log(sqrt(Abs(log(Abs(a0)))))
+a0**2
+sqrt(Abs(a0))
+exp(a0)
+log(Abs(a0))
+log(Abs(log(a0**2)))
+log(Abs(log(sqrt(Abs(a0)))))
+log(Abs(a0))
+log(Abs(log(Abs(log(Abs(a0))))))
+4*x**2
+x**4
+0
+1
+pow(x,(2*x))
+sqrt(2)*sqrt(x)
+x
+0
+1
+pow(x,(x/2))
+exp(2*x)
+exp(x**2)
+1
+E
+exp(pow(x,x))
+log(2*x)
+log(x**2)
+zoo
+0
+log(pow(x,x))
+(a0 + x)**2
+a0**2*x**2
+(-a0 + x)**2
+x**2/a0**2
+pow(x,(2*a0))
+sqrt(Abs(a0 + x))
+sqrt(x)*sqrt(Abs(a0))
+sqrt(Abs(a0 - x))
+sqrt(x)*sqrt(Abs(1/a0))
+pow(x,(a0/2))
+exp(a0 + x)
+exp(a0*x)
+exp(-a0 + x)
+exp(x/a0)
+exp(pow(x,a0))
+log(Abs(a0 + x))
+log(x*Abs(a0))
+log(Abs(a0 - x))
+log(x*Abs(1/a0))
+log(pow(x,a0))
+(a0 + x)**2
+a0**2*x**2
+(a0 - x)**2
+a0**2/x**2
+pow(Abs(a0),(2*x))
+sqrt(Abs(a0 + x))
+sqrt(x)*sqrt(Abs(a0))
+sqrt(Abs(a0 - x))
+sqrt(Abs(a0))/sqrt(x)
+pow(Abs(a0),(x/2))
+exp(a0 + x)
+exp(a0*x)
+exp(a0 - x)
+exp(a0/x)
+exp(pow(Abs(a0),x))
+log(Abs(a0 + x))
+log(x*Abs(a0))
+log(Abs(a0 - x))
+log(Abs(a0)/x)
+log(pow(Abs(a0),x))
+(a0 + a1)**2
+a0**2*a1**2
+(a0 - a1)**2
+a0**2/a1**2
+pow(Abs(a0),(2*a1))
+sqrt(Abs(a0 + a1))
+sqrt(Abs(a0*a1))
+sqrt(Abs(a0 - a1))
+sqrt(Abs(a0/a1))
+pow(Abs(a0),(a1/2))
+exp(a0 + a1)
+exp(a0*a1)
+exp(a0 - a1)
+exp(a0/a1)
+exp(pow(Abs(a0),a1))
+log(Abs(a0 + a1))
+log(Abs(a0*a1))
+log(Abs(a0 - a1))
+log(Abs(a0/a1))
+log(pow(Abs(a0),a1))
+x**2 + x
+x**3
+-x**2 + x
+1/x
+pow(x,(x**2))
+sqrt(x) + x
+pow(x,(3/2))
+-sqrt(x) + x
+sqrt(x)
+pow(x,(sqrt(x)))
+x + exp(x)
+x*exp(x)
+x - exp(x)
+x*exp(-x)
+pow(x,exp(x))
+x + log(x)
+x*log(x)
+x - log(x)
+x/log(x)
+pow(x,log(x))
+a0**2 + x
+a0**2*x
+-a0**2 + x
+x/a0**2
+pow(x,(a0**2))
+x + sqrt(Abs(a0))
+x*sqrt(Abs(a0))
+x - sqrt(Abs(a0))
+x/sqrt(Abs(a0))
+pow(x,(sqrt(Abs(a0))))
+x + exp(a0)
+x*exp(a0)
+x - exp(a0)
+x*exp(-a0)
+pow(x,exp(a0))
+x + log(Abs(a0))
+x*log(Abs(a0))
+x - log(Abs(a0))
+x/log(Abs(a0))
+pow(x,log(Abs(a0)))
+a0 + x**2
+a0*x**2
+a0 - x**2
+a0/x**2
+pow(Abs(a0),(x**2))
+a0 + sqrt(x)
+a0*sqrt(x)
+a0 - sqrt(x)
+a0/sqrt(x)
+pow(Abs(a0),(sqrt(x)))
+a0 + exp(x)
+a0*exp(x)
+a0 - exp(x)
+a0*exp(-x)
+pow(Abs(a0),exp(x))
+a0 + log(x)
+a0*log(x)
+a0 - log(x)
+a0/log(x)
+pow(Abs(a0),log(x))
+a0 + a1**2
+a0*a1**2
+a0 - a1**2
+a0/a1**2
+pow(Abs(a0),(a1**2))
+a0 + sqrt(Abs(a1))
+a0*sqrt(Abs(a1))
+a0 - sqrt(Abs(a1))
+a0/sqrt(Abs(a1))
+pow(Abs(a0),(sqrt(Abs(a1))))
+a0 + exp(a1)
+a0*exp(a1)
+a0 - exp(a1)
+a0*exp(-a1)
+pow(Abs(a0),exp(a1))
+a0 + log(Abs(a1))
+a0*log(Abs(a1))
+a0 - log(Abs(a1))
+a0/log(Abs(a1))
+pow(Abs(a0),log(Abs(a1)))
+x**2 + x
+x**3
+x**2 - x
+x
+pow(x,(2*x))
+sqrt(x) + x
+pow(x,(3/2))
+sqrt(x) - x
+1/sqrt(x)
+pow(x,(x/2))
+x + exp(x)
+x*exp(x)
+-x + exp(x)
+exp(x)/x
+exp(x**2)
+x + log(x)
+x*log(x)
+-x + log(x)
+log(x)/x
+pow(Abs(log(x)),x)
+a0 + x**2
+a0*x**2
+-a0 + x**2
+x**2/a0
+pow(x,(2*a0))
+a0 + sqrt(x)
+a0*sqrt(x)
+-a0 + sqrt(x)
+sqrt(x)/a0
+pow(x,(a0/2))
+a0 + exp(x)
+a0*exp(x)
+-a0 + exp(x)
+exp(x)/a0
+exp(a0*x)
+a0 + log(x)
+a0*log(x)
+-a0 + log(x)
+log(x)/a0
+pow(Abs(log(x)),a0)
+a0**2 + x
+a0**2*x
+a0**2 - x
+a0**2/x
+pow(Abs(a0),(2*x))
+x + sqrt(Abs(a0))
+x*sqrt(Abs(a0))
+-x + sqrt(Abs(a0))
+sqrt(Abs(a0))/x
+pow(Abs(a0),(x/2))
+x + exp(a0)
+x*exp(a0)
+-x + exp(a0)
+exp(a0)/x
+exp(a0*x)
+x + log(Abs(a0))
+x*log(Abs(a0))
+-x + log(Abs(a0))
+log(Abs(a0))/x
+pow(Abs(log(Abs(a0))),x)
+a0**2 + a1
+a0**2*a1
+a0**2 - a1
+a0**2/a1
+pow(Abs(a0),(2*a1))
+a1 + sqrt(Abs(a0))
+a1*sqrt(Abs(a0))
+-a1 + sqrt(Abs(a0))
+sqrt(Abs(a0))/a1
+pow(Abs(a0),(a1/2))
+a1 + exp(a0)
+a1*exp(a0)
+-a1 + exp(a0)
+exp(a0)/a1
+exp(a0*a1)
+a1 + log(Abs(a0))
+a1*log(Abs(a0))
+-a1 + log(Abs(a0))
+log(Abs(a0))/a1
+pow(Abs(log(Abs(a0))),a1)
+exp(4*x)
+exp(x)
+exp(2*x**2)
+exp(2*sqrt(x))
+exp(2*exp(x))
+x**2
+4*log(x)**2
+log(x)**2/4
+exp(x)
+exp(x/4)
+exp(x**2/2)
+exp(sqrt(x)/2)
+exp(exp(x)/2)
+sqrt(x)
+sqrt(2)*sqrt(Abs(log(x)))
+sqrt(2)*sqrt(Abs(log(x)))/2
+exp(exp(2*x))
+exp(exp(x/2))
+x**2
+sqrt(x)
+4*log(x)
+log(x)
+2*x
+2*x
+2*log(Abs(log(x)))
+log(x)
+log(x)/4
+x/2
+x/2
+log(Abs(log(x)))/2
+log(2*Abs(log(x)))
+log(Abs(log(x))/2)
+exp(4*a0)
+exp(a0)
+exp(2*a0**2)
+exp(2*sqrt(Abs(a0)))
+exp(2*exp(a0))
+a0**2
+4*log(Abs(a0))**2
+log(Abs(a0))**2/4
+exp(a0)
+exp(a0/4)
+exp(a0**2/2)
+exp(sqrt(Abs(a0))/2)
+exp(exp(a0)/2)
+sqrt(Abs(a0))
+sqrt(2)*sqrt(Abs(log(Abs(a0))))
+sqrt(2)*sqrt(Abs(log(Abs(a0))))/2
+exp(exp(2*a0))
+exp(exp(a0/2))
+a0**2
+sqrt(Abs(a0))
+4*log(Abs(a0))
+log(Abs(a0))
+2*a0
+2*a0
+2*log(Abs(log(Abs(a0))))
+log(Abs(a0))
+log(Abs(a0))/4
+a0/2
+a0/2
+log(Abs(log(Abs(a0))))/2
+log(2*Abs(log(Abs(a0))))
+log(Abs(log(Abs(a0)))/2)
+4*x**2
+0
+sqrt(2)*sqrt(x)
+0
+exp(2*x)
+1
+log(2*x)
+zoo

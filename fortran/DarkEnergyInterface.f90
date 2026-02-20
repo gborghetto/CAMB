@@ -49,23 +49,23 @@
     public TDarkEnergyModel, TDarkEnergyEqnOfState
     contains
 
-    function w_de(this, a)
+    function TDarkEnergyModel_w_de(this, a)
     class(TDarkEnergyModel) :: this
-    real(dl) :: w_de, al
+    real(dl) :: TDarkEnergyModel_w_de, al
     real(dl), intent(IN) :: a
 
-    w_de = -1._dl
+    TDarkEnergyModel_w_de = -1._dl
 
-    end function w_de  ! equation of state of the PPF DE
+    end function TDarkEnergyModel_w_de  ! equation of state of the PPF DE
 
-    function grho_de(this, a)  !relative density (8 pi G a^4 rho_de /grhov)
+    function TDarkEnergyModel_grho_de(this, a)  !relative density (8 pi G a^4 rho_de /grhov). !relative density (8 pi G a^4 rho_de /grhov)
     class(TDarkEnergyModel) :: this
-    real(dl) :: grho_de, al, fint
+    real(dl) :: TDarkEnergyModel_grho_de, al, fint
     real(dl), intent(IN) :: a
 
-    grho_de =0._dl
+    TDarkEnergyModel_grho_de =0._dl
 
-    end function grho_de
+    end function TDarkEnergyModel_grho_de
 
     subroutine ValsAta(this,a,aphi,aphidot) ! added for phiphidot output
     class(TDarkEnergyModel) :: this
@@ -308,5 +308,14 @@
 
     end subroutine TDarkEnergyEqnOfState_Init
 
+#ifdef __GFORTRAN__
+    subroutine TDarkEnergyEqnOfState_Free(this)
+    type(TDarkEnergyEqnOfState), intent(inout) :: this
+
+    call this%equation_of_state%Clear()
+    call this%logdensity%Clear()
+
+    end subroutine TDarkEnergyEqnOfState_Free
+#endif
 
     end module DarkEnergyInterface

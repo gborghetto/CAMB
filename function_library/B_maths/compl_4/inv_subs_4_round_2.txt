@@ -1,0 +1,18 @@
+{a0: sqrt(Abs(a0))}
+{a0: sqrt(Abs(a0))}
+{a0: sqrt(Abs(a0))}
+{a0: a0**2}
+{a0: a0**2}
+{a0: a0**2}
+{a0: exp(a0)}
+{a0: exp(a0)}
+{a0: exp(a0)}
+{a0: exp(a0)}
+nan
+{a0: sqrt(Abs(a0))}
+{a0: sqrt(Abs(a0))}
+{a0: a0**2}
+{a0: a0**2}
+{a0: exp(a0)}
+{a0: exp(a0)}
+{a0: exp(a0)}

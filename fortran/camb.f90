@@ -411,8 +411,8 @@
         allocate (TAxionEffectiveFluid::P%DarkEnergy)
     else if (DarkEneryModel == 'EARLYQUINTESSENCE') then
         allocate (TEarlyQuintessence::P%DarkEnergy)
-    else if (DarkEneryModel == 'QUINTESSENCEMODEL') then
-        allocate (TQuintessenceModel::P%DarkEnergy)
+    else if (DarkEneryModel == 'QUINTESSENCEINTERP') then
+        allocate (TQuintessenceInterp::P%DarkEnergy)
     else
         ErrMsg = 'Unknown dark energy model: '//trim(DarkEneryModel)
         return
