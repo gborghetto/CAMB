@@ -82,11 +82,12 @@
     end type TEarlyQuintessence
 
     type, extends(TQuintessence) :: TQuintessenceInterp ! new class for the interpolated potential
-        real(dl), dimension(:), allocatable :: a_train
-        real(dl), dimension(:), allocatable :: B_train
-        real(dl), dimension(:), allocatable :: dB_train
-        real(dl), dimension(:), allocatable :: ddB_train
+        real(dl), dimension(:), allocatable :: phi_train
+        real(dl), dimension(:), allocatable :: V_train
+        real(dl), dimension(:), allocatable :: dV_train
+        real(dl), dimension(:), allocatable :: ddV_train
         real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
+        real(dl) :: V1 = 1e-8
         real(dl) :: n = 1.0_dl
         real(dl) :: theta_i = 0.0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
@@ -95,9 +96,9 @@
         real(dl), dimension(:), allocatable :: fde, ddfde
         real(dl) :: omega_tol = 1d-6 !tolerance for OmegaDE
         real(dl) :: atol = 1e-8_dl
-        type(PotentialInterpolator1D) :: B_interpolator
-        type(PotentialInterpolator1D) :: dB_interpolator
-        type(PotentialInterpolator1D) :: ddB_interpolator
+        type(PotentialInterpolator1D) :: V_interpolator
+        type(PotentialInterpolator1D) :: dV_interpolator
+        type(PotentialInterpolator1D) :: ddV_interpolator
     contains
     procedure :: Vofphi => TQuintessenceInterp_VofPhi
     procedure :: Init => TQuintessenceInterp_Init
@@ -806,11 +807,11 @@
     integer :: deriv
     select case(deriv)
       case (0)
-        Vofphi = this%V0*exp(-this%n*phi) * this%B_interpolator%interpolate(a)
+        Vofphi = this%V0*exp(-this%n*phi) + this%V1/a**3 * (1-this%V_interpolator%interpolate(phi))
       case (1)
-        Vofphi = -this%V0*this%n*exp(-this%n*phi) * this%B_interpolator%interpolate(a)
+        Vofphi = -this%V0*this%n*exp(-this%n*phi) - this%V1/a**3 * this%dV_interpolator%interpolate(phi)
       case (2)
-        Vofphi = this%V0*this%n**2*exp(-this%n*phi) * this%B_interpolator%interpolate(a)
+        Vofphi = this%V0*this%n**2*exp(-this%n*phi) - this%V1/a**3 * this%ddV_interpolator%interpolate(phi)
       case default
         stop 'Invalid deriv in interpolated VofPhi'
       end select
@@ -839,11 +840,11 @@
     !real(dl) ::  theta_best, theta_try, fval, fmin, theta_step, dtheta
     integer :: nsteps
 
-    call this%B_interpolator%init(this%a_train,this%B_train)
-    call this%dB_interpolator%init(this%a_train,this%dB_train)
-    call this%ddB_interpolator%init(this%a_train,this%ddB_train)
+    call this%V_interpolator%init(this%phi_train,this%V_train)
+    call this%dV_interpolator%init(this%phi_train,this%dV_train)
+    call this%ddV_interpolator%init(this%phi_train,this%ddV_train)
 
-    if (FeedbackLevel > 0) write(*,*) 'Initialized Quintessence interpolation with', size(this%a_train), 'points from ', this%a_train(1), ' to ', this%a_train(size(this%a_train))
+    if (FeedbackLevel > 0) write(*,*) 'Initialized Quintessence interpolation with', size(this%phi_train), 'points from ', this%phi_train(1), ' to ', this%phi_train(size(this%phi_train))
 
 
 
@@ -1282,6 +1283,7 @@
 
     call this%TDarkEnergyModel%ReadParams(Ini)
     this%V0 = Ini%Read_Double('V0', 1d-7)
+    this%V1 = Ini%Read_Double('V0', 1d-7)
     this%n = Ini%Read_Double('n',0.d0)
     this%theta_i = Ini%Read_Double('theta_i',0.d0)
 

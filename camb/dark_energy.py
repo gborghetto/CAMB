@@ -381,28 +381,29 @@ def create_callable_function(expr_template, param_symbols, x_vals):
 
 # def exp_mapping(vals):
 
-def create_potential_table(expr_template, param_symbols, param_vals, a_vals, positive_mapping='exp'):
+def create_potential_table(expr_template, param_symbols, param_vals, phi_vals):
     """Create the potential table from the ESR /sympy expression and parameter values"""
 
     # print(f"Creating potential table for expression: {expr_template} with parameters: {[str(p) for p in param_symbols]}, param_vals: {param_vals}")
 
-    a_padding = 1e-2
-    padded_a_vals = np.concatenate((
-        np.array([a_vals[0] - a_padding]),
-        a_vals,
-        np.array([a_vals[-1] + a_padding])
+    phi_padding = 1e-2
+    padded_phi_vals = np.concatenate((
+        np.array([phi_vals[0] - phi_padding]),
+        phi_vals,
+        np.array([phi_vals[-1] + phi_padding])
     ))
-    function = create_callable_function(expr_template, param_symbols, padded_a_vals)
-    if positive_mapping=='exp':
-        vals = function(param_vals)
-        B_vals = np.exp(vals)  # Ensure V(phi) > 0
-        log_B_vals = vals
-    elif positive_mapping=='square':
-        vals = function(param_vals)
-        B_vals = vals**2
-        log_B_vals = np.log(B_vals + 1e-50)  # Avoid log(0)
-    else:
-        raise CAMBError(f"Unknown positive_mapping method: {positive_mapping}")
+    function = create_callable_function(expr_template, param_symbols, padded_phi_vals)
+    V_vals = function(param_vals)
+    # if positive_mapping=='exp':
+    #     vals = function(param_vals)
+    #     V_vals = np.exp(vals)  # Ensure V(phi) > 0
+    #     log_V_vals = vals
+    # elif positive_mapping=='square':
+    #     vals = function(param_vals)
+    #     V_vals = vals**2  # Ensure V(phi) > 0
+    #     log_V_vals = np.log(V_vals + 1e-50)  # Avoid log(0)
+    # else:
+    #     raise CAMBError(f"Unknown positive_mapping method: {positive_mapping}")
 
     # log_V_vals = function(param_vals)
     # # print(f"Evaluated log_V_vals: {log_V_vals}")
@@ -410,21 +411,20 @@ def create_potential_table(expr_template, param_symbols, param_vals, a_vals, pos
     # V_vals = np.exp(log_V_vals)  # Ensure V(phi) > 0
     # Check for invalid values
 
-    invalid_mask = np.logical_or(np.isinf(B_vals), np.isnan(B_vals))
+    invalid_mask = np.logical_or(np.isinf(V_vals), np.isnan(V_vals))
     if np.any(invalid_mask):
         success = False
-        return {'success': success, 'a_train': None, 'B_train': None, 'dB_train': None, 'ddB_train': None}
+        return {'success': success, 'phi_train': None, 'V_train': None, 'dV_train': None, 'ddV_train': None}
     else:
         success = True
-        logB_interpolator = InterpolatedUnivariateSpline(padded_a_vals, log_B_vals)
-        dlogB_da = logB_interpolator.derivative(n=1)(a_vals)
-        dB_da = dlogB_da * B_vals[1:-1]
-        ddB_da = B_vals[1:-1] * (logB_interpolator.derivative(n=2)(a_vals) + dlogB_da**2)
-        invalid_mask_dB = np.logical_or(np.isinf(dB_da), np.isnan(dB_da))
-        invalid_mask_ddB = np.logical_or(np.isinf(ddB_da), np.isnan(ddB_da))
-        if np.any(invalid_mask_dB) or np.any(invalid_mask_ddB):
+        V_interpolator = InterpolatedUnivariateSpline(padded_phi_vals, V_vals)
+        dV_dphi  = V_interpolator.derivative(n=1)(phi_vals)
+        ddV_dphi = V_interpolator.derivative(n=2)(phi_vals)
+        invalid_mask_dV = np.logical_or(np.isinf(dV_dphi), np.isnan(dV_dphi))
+        invalid_mask_ddV = np.logical_or(np.isinf(ddV_dphi), np.isnan(ddV_dphi))
+        if np.any(invalid_mask_dV) or np.any(invalid_mask_ddV):
             success = False
-        return {'success': success, 'a_train': a_vals, 'B_train': B_vals[1:-1], 'dB_train': dB_da, 'ddB_train': ddB_da}
+        return {'success': success, 'phi_train': phi_vals, 'V_train': V_vals[1:-1], 'dV_train': dV_dphi, 'ddV_train': ddV_dphi}
 
 
 
@@ -437,12 +437,13 @@ class QuintessenceInterp(Quintessence):
     """
 
     _fields_ = [
-        ("a_train", AllocatableArrayDouble, "nodes for spline interpolation of VofPhi"),
-        ("B_train", AllocatableArrayDouble, "B(a) at nodes"),
-        ("dB_train", AllocatableArrayDouble, "dB/da at nodes"),
-        ("ddB_train", AllocatableArrayDouble, "d^2B/da^2 at nodes"),
+        ("phi_train", AllocatableArrayDouble, "nodes for spline interpolation of VofPhi"),
+        ("V_train", AllocatableArrayDouble, "V(phi) at nodes"),
+        ("dV_train", AllocatableArrayDouble, "dV/dphi at nodes"),
+        ("ddV_train", AllocatableArrayDouble, "d^2V/dphi^2 at nodes"),
         ("V0", c_double, "Overall potential amplitude "
                         " used for tuning to get correct DE density today"),
+        ("V1", c_double),
         ('n', c_double),
         ("theta_i", c_double, "phi_init initial field value"),
         ("frac_lambda0", c_double, "fraction of dark energy in cosmological constant today"),
@@ -461,8 +462,8 @@ class QuintessenceInterp(Quintessence):
     _fortran_class_name_ = 'TQuintessenceInterp'
 
     def set_params(self, esr_param_a0 = None, esr_param_a1 = None, esr_param_a2 = None, esr_param_a3 = None,
-                    esr_functions_file='',esr_potential_index=0, a_min=1e-6, a_max=1, n_a=250,
-                   V0=1e-8, n = 1, theta_i=0.0, frac_lambda0=0.):
+                    esr_functions_file='',esr_potential_index=0, phi_min=-2, phi_max=2, n_phi=250,
+                   V0=1e-8, V1=1e-8, n = 1, theta_i=0.0, frac_lambda0=0.):
 
         function_dict = load_esr_function_string(esr_functions_file, esr_potential_index)
         # print(f"Loaded ESR function dictionary with potential index {esr_potential_index} from file {esr_functions_file}: {function_dict}")
@@ -484,26 +485,27 @@ class QuintessenceInterp(Quintessence):
         # esr_param_names = [str(p) for p in function_dict['param_symbols']]
         # esr_function_string = function_dict['func_string']
         esr_function_template = function_dict['expr_template']
-        a_vals = np.linspace(a_min, a_max, n_a)
+        phi_vals = np.linspace(phi_min, phi_max, n_phi)
         potential_dict = create_potential_table(esr_function_template,
                                                     esr_param_symbols,
-                                                    esr_params, a_vals)
+                                                    esr_params, phi_vals)
         success = potential_dict['success']
         if not success:
             raise CAMBError("Failed to create a valid potential table from ESR function for the given esr parameters")
 
-        a_train = potential_dict['a_train']
-        B_train = potential_dict['B_train']
-        dB_train = potential_dict['dB_train']
-        ddB_train = potential_dict['ddB_train']
+        phi_train = potential_dict['phi_train']
+        V_train = potential_dict['V_train']
+        dV_train = potential_dict['dV_train']
+        ddV_train = potential_dict['ddV_train']
 
 
-        self.a_train = np.ascontiguousarray(a_train, dtype=np.float64)
-        self.B_train = np.ascontiguousarray(B_train, dtype=np.float64)
-        self.dB_train = np.ascontiguousarray(dB_train, dtype=np.float64)
-        self.ddB_train = np.ascontiguousarray(ddB_train, dtype=np.float64)
+        self.phi_train = np.ascontiguousarray(phi_train, dtype=np.float64)
+        self.V_train = np.ascontiguousarray(V_train, dtype=np.float64)
+        self.dV_train = np.ascontiguousarray(dV_train, dtype=np.float64)
+        self.ddV_train = np.ascontiguousarray(ddV_train, dtype=np.float64)
         self.n = n
         self.V0 = V0
+        self.V1 = V1
         self.theta_i = theta_i
         self.frac_lambda0 = frac_lambda0
 

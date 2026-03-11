@@ -263,7 +263,7 @@
     procedure :: get_zstar => CAMBdata_get_zstar
     procedure :: DarkEnergyStressEnergy => CAMBdata_DarkEnergyStressEnergy
     procedure :: DarkEnergyPhiPhidot => CAMBdata_DarkEnergyPhiPhidot
-    ! procedure :: DarkEnergyVphi => CAMBdata_DarkEnergyVphi
+    procedure :: DarkEnergyVphi => CAMBdata_DarkEnergyVphi
     procedure :: SetParams => CAMBdata_SetParams
     procedure :: Free => CAMBdata_Free
     procedure :: grho_no_de
