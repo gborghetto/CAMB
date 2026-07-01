@@ -1,0 +1,51 @@
+theory:
+  camb:
+    path: /Users/giuliaborghetto/CAMB_V_phi_interp
+    stop_at_error: false
+    extra_args:
+      halofit_version: mead
+      bbn_predictor: PArthENoPE_880.2_standard.dat
+      lens_potential_accuracy: 1
+      num_massive_neutrinos: 1
+      nnu: 3.046
+      dark_energy_model: QuintessenceInterp
+      esr_functions_file: /Users/giuliaborghetto/CAMB_V_phi_interp/function_library/V_maths/compl_4/unique_equations_4.txt
+      esr_potential_index: 8
+likelihood:
+  cmb_lite_3d: null
+  bao.desi_dr2.desi_bao_all: null
+  sn.union3: null
+params:
+  n: 0.965081
+  theta_i: 1.129909
+  omch2: 0.119094
+  ombh2: 0.022287
+  H0: 66.264064
+  esr_param_a0: -0.020559
+  chi2__BAO:
+    latex: \chi^2_\mathrm{BAO}
+    derived: true
+  chi2__CMB:
+    latex: \chi^2_\mathrm{CMB}
+    derived: true
+  chi2__SN:
+    latex: \chi^2_\mathrm{SN}
+    derived: true
+  chi2_total:
+    latex: \chi^2_\mathrm{total}
+    derived: 'lambda chi2__BAO, chi2__SN, chi2__CMB: chi2__BAO + chi2__SN + chi2__CMB'
+  omegam:
+    latex: \Omega_\mathrm{m}
+    derived: 'lambda omch2, ombh2, H0: (omch2 + ombh2) / (H0 / 100.0)**2'
+  rdrag:
+    latex: r_\mathrm{drag}
+    derived: true
+  hrd:
+    latex: hr_d
+    derived: 'lambda H0, rdrag: H0/100 * rdrag'
+  thetastar:
+    latex: \theta_*
+    derived: true
+sampler:
+ evaluate:
+output: /Users/giuliaborghetto/CAMB_V_phi_interp/esr_analysis/chains/test_B_maths/108/108

@@ -1,0 +1,40 @@
+nan
+nan
+nan;{a0: log(Abs(a0))}
+{a0: -a0}
+{a0: -a0}
+nan
+nan
+nan
+{a0: -a0}
+{a0: -a0}
+{a0: -a0}
+nan
+nan
+nan
+nan
+nan
+{a0: a1, a1: a0}
+{a0: a1, a1: a0}
+{a0: a1, a1: a0}
+nan
+nan
+nan
+nan
+nan
+nan
+{a0: a1, a1: a0}
+{a0: a1, a1: a0}
+{a0: a1, a1: a0}
+{a0: a1, a1: a0}
+{a0: a1, a1: a0}
+{a0: a1, a1: a0}
+nan
+nan
+nan
+nan
+nan
+nan
+nan
+nan
+nan

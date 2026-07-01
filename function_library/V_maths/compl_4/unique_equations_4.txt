@@ -1,0 +1,135 @@
+sin(sin(a0))**2
+exp(pow(x,a0))
+Abs(a0)/x**2
+x - Abs(a0)
+sin(pow(x,a0))
+sin(x**2)**2
+x**3
+exp(2*Abs(a0))
+exp(a0*x)
+x*exp(-x)
+sin(x)/x
+x - sin(x)
+pow(x,sin(x))
+pow(x,Abs(a0))
+sin(sin(a0)**2)
+a0*exp(-x)
+x*exp(x)
+a0 - x**2
+sin(2*x)
+pow(x,sin(a0))
+x/sin(a0)
+sin(exp(sin(a0)))
+exp(exp(Abs(a0)))
+sin(sin(x))**2
+E
+sin(sin(x**2))
+sin(exp(exp(x)))
+pow(x,exp(x))
+exp(exp(sin(a0)))
+Abs(a0)
+x**2 + x
+exp(x**2)
+1
+a0*x**2
+exp(x**4)
+x*sin(x)
+Abs(a0)/x
+pow(Abs(a0),exp(x))
+sin(pow(x,x))
+exp(4*x)
+pow(Abs(a0),sin(a1))
+pow(Abs(sin(a0)),x)
+exp(sin(sin(x)))
+x**2*Abs(a0)
+exp(x)*Abs(a0)
+-x**2 + x
+sin(exp(x**2))
+exp(Abs(a0))
+pow(Abs(sin(x)),a0)
+-sin(a0 - x)
+a0 - exp(x)
+x + exp(x)
+sin(sin(x)**2)
+sin(a0)/x
+-x + sin(a0)
+x - sin(a0)
+sin(sin(Abs(a0)))
+sin(x**2)
+sin(sin(exp(x)))
+sin(Abs(a0))
+sin(a0/x)
+exp(2*exp(x))
+-x + exp(x)
+exp(exp(2*x))
+a0
+exp(sin(x**2))
+x/sin(x)
+pow(Abs(a0),sin(x))
+exp(2*sin(x))
+a0 + sin(x)
+sin(exp(x))**2
+a0*sin(x)
+a0/sin(x)
+x*Abs(a0)
+sin(x**4)
+pow(x,(2*x))
+a1*sin(a0)
+sin(sin(sin(a0)))
+pow(Abs(a0),(x**2))
+exp(-x)*Abs(a0)
+sin(1)
+exp(pow(Abs(a0),x))
+sin(exp(Abs(a0)))
+exp(sin(exp(x)))
+4*x**2
+x - exp(x)
+sin(Abs(a0))**2
+x
+a0 + x**2
+exp(exp(exp(x)))
+x + sin(x)
+x*sin(a0)
+sin(a0)**4
+x**4
+pow(x,a0)
+exp(a0/x)
+exp(exp(sin(x)))
+pow(x,(x**2))
+a0*exp(x)
+sin(a0*x)
+exp(exp(x**2))
+sin(exp(2*x))
+sin(x)**4
+exp(2*x**2)
+-x + Abs(a0)
+sin(pow(Abs(a0),x))
+a0 + exp(x)
+x**8
+exp(sin(x)**2)
+a0/x**2
+(a0 - x)**2
+a1 + sin(a0)
+exp(sin(a0)**2)
+exp(sin(Abs(a0)))
+sin(a0)
+exp(x)/x
+exp(2*x)
+pow(Abs(sin(a0)),a1)
+pow(Abs(sin(x)),x)
+sin(a0 - x)
+1/x
+pow(Abs(a0),(2*x))
+x + Abs(a0)
+a0 - sin(x)
+x**2 - x
+(a0 + x)**2
+a0/sin(a1)
+sin(sin(sin(x)))
+-x + sin(x)
+exp(2*sin(a0))
+sin(exp(sin(x)))
+a0 - sin(a1)
+exp(pow(x,x))
+exp(sin(sin(a0)))
+0

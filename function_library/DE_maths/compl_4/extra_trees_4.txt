@@ -1,0 +1,4 @@
+[np.str_('sin'), '*', '2', np.str_('x')]
+[np.str_('sin'), '0']
+[np.str_('exp'), '*', '2', np.str_('x')]
+[np.str_('exp'), '0']

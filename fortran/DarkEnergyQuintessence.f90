@@ -89,6 +89,8 @@
         real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
         real(dl) :: V1 = 1e-8
         real(dl) :: n = 1.0_dl
+        real(dl) :: c0 = 1e-8
+        real(dl) :: c1 = 1.0_dl
         real(dl) :: theta_i = 0.0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
         integer :: npoints = 5000 !baseline number of log a steps; will be increased if needed when there are oscillations
@@ -220,18 +222,18 @@
     tot = this%state%grho_no_de(a) + grhode
     ! write (*,*) 'EvolveBackground: a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
 
-    if (grhode < 0.0_dl) then
-        global_error_flag = error_darkenergy
-        global_error_message= 'TQuintessence EvolveBackground: negative grhode'
-        grhode = 0.0_dl
-        ! if (FeedbackLevel > 0) then
-        !     write(*,*) 'TQuintessence EvolveBackground: negative grhode'
-        !     write(*,*) 'a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
-        ! end if
-        ! stop 'TQuintessence EvolveBackground: negative grhode'
-        ! error stop 'TQuintessence EvolveBackground: negative grhode'
-        ! return
-    end if
+    !if (grhode < 0.0_dl) then
+    !    global_error_flag = error_darkenergy
+    !    global_error_message= 'TQuintessence EvolveBackground: negative grhode'
+    !    grhode = 0.0_dl
+    !    ! if (FeedbackLevel > 0) then
+    !    !     write(*,*) 'TQuintessence EvolveBackground: negative grhode'
+    !    !     write(*,*) 'a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
+    !    ! end if
+    !    ! stop 'TQuintessence EvolveBackground: negative grhode'
+    !    ! error stop 'TQuintessence EvolveBackground: negative grhode'
+    !    ! return
+    !end if
 
     adot=sqrt(tot/3.0d0)
     yprime(1)=phidot/adot !d phi /d a
@@ -805,13 +807,18 @@
     real(dl) phi,Vofphi
     real(dl), intent(in) :: a
     integer :: deriv
+
     select case(deriv)
       case (0)
-        Vofphi = this%V0*exp(-this%n*phi) + this%V1/a**3 * (1-this%V_interpolator%interpolate(phi))
+        Vofphi = this%V0*exp(-this%n*phi) + this%V1/a**3 * (this%V_interpolator%interpolate(phi) - 1) !this%V0*exp(-this%n*phi) + this%V1*exp(-this%n2*phi)/a**3 - this%V1/a**3
+        ! Vofphi = this%V0*exp(-this%n*phi) + this%V1/a**this%c1 * this%V_interpolator%interpolate(phi) - this%V1/a**3
+
       case (1)
-        Vofphi = -this%V0*this%n*exp(-this%n*phi) - this%V1/a**3 * this%dV_interpolator%interpolate(phi)
+        Vofphi = -this%V0*this%n*exp(-this%n*phi) + this%V1/a**3 * this%dV_interpolator%interpolate(phi) !-this%V0*this%n*exp(-this%n*phi) - this%V1*this%n2*exp(-this%n2*phi)/a**3
+        ! Vofphi = -this%V0*this%n*exp(-this%n*phi) + this%V1/a**this%c1 * this%dV_interpolator%interpolate(phi)
       case (2)
-        Vofphi = this%V0*this%n**2*exp(-this%n*phi) - this%V1/a**3 * this%ddV_interpolator%interpolate(phi)
+        Vofphi = this%V0*this%n**2*exp(-this%n*phi) + this%V1/a**3 * this%ddV_interpolator%interpolate(phi) !this%V0*this%n**2*exp(-this%n*phi) + this%V1*this%n2**2*exp(-this%n2*phi)/a**3
+        ! Vofphi = this%V0*this%n**2*exp(-this%n*phi) + this%V1/a**this%c1 * this%ddV_interpolator%interpolate(phi)
       case default
         stop 'Invalid deriv in interpolated VofPhi'
       end select
@@ -839,6 +846,9 @@
     real(dl) log_params(2), param_min(2), param_max(2)
     !real(dl) ::  theta_best, theta_try, fval, fmin, theta_step, dtheta
     integer :: nsteps
+    !real(dl) :: phi0_new, phi0_tol
+    !integer  :: phi0_iter
+    !integer, parameter :: max_phi0_iter = 20
 
     call this%V_interpolator%init(this%phi_train,this%V_train)
     call this%dV_interpolator%init(this%phi_train,this%dV_train)
@@ -865,6 +875,7 @@
     !so grho_no_de can be used to get density and pressure of other components at scale factor a
 
     call this%TQuintessence%Init(State)
+    this%V1 = this%State%grhoc + this%State%grhob
 
     this%dloga = (-this%log_astart)/(this%npoints-1)
 
@@ -992,7 +1003,6 @@
     end if
 
     ! --------------- method 2 for initial conditions tuning V0 End ------------------------------
-
 
     y(1)=initial_phi
     initial_phidot =  this%astart*this%phidot_start(initial_phi)
@@ -1282,10 +1292,11 @@
     class(TIniFile), intent(in) :: Ini
 
     call this%TDarkEnergyModel%ReadParams(Ini)
-    this%V0 = Ini%Read_Double('V0', 1d-7)
-    this%V1 = Ini%Read_Double('V0', 1d-7)
-    this%n = Ini%Read_Double('n',0.d0)
-    this%theta_i = Ini%Read_Double('theta_i',0.d0)
+    !this%V0 = Ini%Read_Double('V0', 1d-7)
+    !this%V1 = Ini%Read_Double('V1', 1d-7)
+    !this%n = Ini%Read_Double('n',0.d0)
+    !this%f0 = Ini%Read_Double('f0',0.d0)
+    !this%theta_i = Ini%Read_Double('theta_i',0.d0)
 
     end subroutine TQuintessenceInterp_ReadParams
 

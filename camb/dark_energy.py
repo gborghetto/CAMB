@@ -394,7 +394,15 @@ def create_potential_table(expr_template, param_symbols, param_vals, phi_vals):
     ))
     function = create_callable_function(expr_template, param_symbols, padded_phi_vals)
     V_vals = function(param_vals)
-    # if positive_mapping=='exp':
+    V_vals = function(param_vals)
+
+    # temporary debug
+    # print(f"V_vals min/max: {np.nanmin(V_vals)}, {np.nanmax(V_vals)}")
+    # print(f"Any inf: {np.any(np.isinf(V_vals))}, Any nan: {np.any(np.isnan(V_vals))}")
+    # print(f"V_vals at phi=0: {V_vals[0]}, phi=0 value: {padded_phi_vals[0]}")
+
+    invalid_mask = np.logical_or(np.isinf(V_vals), np.isnan(V_vals))
+        # if positive_mapping=='exp':
     #     vals = function(param_vals)
     #     V_vals = np.exp(vals)  # Ensure V(phi) > 0
     #     log_V_vals = vals
@@ -413,6 +421,12 @@ def create_potential_table(expr_template, param_symbols, param_vals, phi_vals):
 
     invalid_mask = np.logical_or(np.isinf(V_vals), np.isnan(V_vals))
     if np.any(invalid_mask):
+        success = False
+        return {'success': success, 'phi_train': None, 'V_train': None, 'dV_train': None, 'ddV_train': None}
+    elif np.any(np.abs(V_vals) > 1e5):  # catch huge but finite values
+        success = False
+        return {'success': success, 'phi_train': None, 'V_train': None, 'dV_train': None, 'ddV_train': None}
+    elif np.any(V_vals < 0):
         success = False
         return {'success': success, 'phi_train': None, 'V_train': None, 'dV_train': None, 'ddV_train': None}
     else:
@@ -445,6 +459,8 @@ class QuintessenceInterp(Quintessence):
                         " used for tuning to get correct DE density today"),
         ("V1", c_double),
         ('n', c_double),
+        ('c0', c_double),
+        ('c1', c_double),
         ("theta_i", c_double, "phi_init initial field value"),
         ("frac_lambda0", c_double, "fraction of dark energy in cosmological constant today"),
         # ("use_zc", c_bool, "solve for f, m to get specific critical reshift zc and fde_zc"),
@@ -463,7 +479,7 @@ class QuintessenceInterp(Quintessence):
 
     def set_params(self, esr_param_a0 = None, esr_param_a1 = None, esr_param_a2 = None, esr_param_a3 = None,
                     esr_functions_file='',esr_potential_index=0, phi_min=-2, phi_max=2, n_phi=250,
-                   V0=1e-8, V1=1e-8, n = 1, theta_i=0.0, frac_lambda0=0.):
+                   V0=1e-8, n = 1, c0 = 1e-8, c1=1., theta_i=0.0, frac_lambda0=0.):
 
         function_dict = load_esr_function_string(esr_functions_file, esr_potential_index)
         # print(f"Loaded ESR function dictionary with potential index {esr_potential_index} from file {esr_functions_file}: {function_dict}")
@@ -503,9 +519,11 @@ class QuintessenceInterp(Quintessence):
         self.V_train = np.ascontiguousarray(V_train, dtype=np.float64)
         self.dV_train = np.ascontiguousarray(dV_train, dtype=np.float64)
         self.ddV_train = np.ascontiguousarray(ddV_train, dtype=np.float64)
-        self.n = n
         self.V0 = V0
-        self.V1 = V1
+        #self.V1 = V1
+        self.n = n
+        self.c0 = c0
+        self.c1 = c1
         self.theta_i = theta_i
         self.frac_lambda0 = frac_lambda0
 

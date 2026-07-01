@@ -57,11 +57,15 @@ def main(runname, compl, track_memory=False, search_tmax=60, expand_tmax=1, seed
                            ["+", "*", "-", "/", "pow"]]  # type2
     elif runname == 'DE_maths':
         basis_functions = [["x", "a"],  # type0
-                           ["square", "exp"],  # type1
+                           ["sin", "exp"],  # type1
                            ["+", "*", "-", "/", "pow"]]  # type2
     elif runname == 'B_maths':
         basis_functions = [["x", "a"],  # type0
                            ["square", "sqrt_abs", "exp","log_abs"],  # type1
+                           ["+", "*", "-", "/", "pow"]]  # type2
+    elif runname == 'V_maths':
+        basis_functions = [["x", "a"],  # type0
+                           ["square", "exp", "sin"],  # type1
                            ["+", "*", "-", "/", "pow"]]  # type2
     elif runname == 'VCDM_maths':
         basis_functions = [["x", "a"],  #  type0
@@ -304,5 +308,5 @@ def main(runname, compl, track_memory=False, search_tmax=60, expand_tmax=1, seed
 
 if __name__ == "__main__":
     compl = 4 #int(sys.argv[1])
-    runname = 'B_maths' #'core_maths'
+    runname = 'V_maths' #'core_maths'
     main(runname, compl)
