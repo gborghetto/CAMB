@@ -222,18 +222,18 @@
     tot = this%state%grho_no_de(a) + grhode
     ! write (*,*) 'EvolveBackground: a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
 
-    !if (grhode < 0.0_dl) then
-    !    global_error_flag = error_darkenergy
-    !    global_error_message= 'TQuintessence EvolveBackground: negative grhode'
-    !    grhode = 0.0_dl
-    !    ! if (FeedbackLevel > 0) then
-    !    !     write(*,*) 'TQuintessence EvolveBackground: negative grhode'
-    !    !     write(*,*) 'a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
-    !    ! end if
-    !    ! stop 'TQuintessence EvolveBackground: negative grhode'
-    !    ! error stop 'TQuintessence EvolveBackground: negative grhode'
-    !    ! return
-    !end if
+    if (grhode < 0.0_dl) then
+        global_error_flag = error_darkenergy
+        global_error_message= 'TQuintessence EvolveBackground: negative grhode'
+        grhode = 0.0_dl
+        ! if (FeedbackLevel > 0) then
+        !     write(*,*) 'TQuintessence EvolveBackground: negative grhode'
+        !     write(*,*) 'a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
+        ! end if
+        ! stop 'TQuintessence EvolveBackground: negative grhode'
+        ! error stop 'TQuintessence EvolveBackground: negative grhode'
+        ! return
+    end if
 
     adot=sqrt(tot/3.0d0)
     yprime(1)=phidot/adot !d phi /d a
