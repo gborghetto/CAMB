@@ -104,6 +104,7 @@
     contains
     procedure :: Vofphi => TQuintessenceInterp_VofPhi
     procedure :: Init => TQuintessenceInterp_Init
+    procedure :: BackgroundDensityAndPressure => TQuintessenceInterp_BackgroundDensityAndPressure
     procedure :: ReadParams =>  TQuintessenceInterp_ReadParams
     procedure, nopass :: PythonClass => TQuintessenceInterp_PythonClass
     procedure, nopass :: SelfPointer => TQuintessenceInterp_SelfPointer
@@ -222,17 +223,13 @@
     tot = this%state%grho_no_de(a) + grhode
     ! write (*,*) 'EvolveBackground: a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
 
-    if (grhode < 0.0_dl) then
+    ! Note grhode < 0 is allowed: for the time-dependent potential the effective DE
+    ! density can be transiently negative; only the total density must stay positive
+    if (tot <= 0.0_dl) then
         global_error_flag = error_darkenergy
-        global_error_message= 'TQuintessence EvolveBackground: negative grhode'
-        grhode = 0.0_dl
-        ! if (FeedbackLevel > 0) then
-        !     write(*,*) 'TQuintessence EvolveBackground: negative grhode'
-        !     write(*,*) 'a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
-        ! end if
-        ! stop 'TQuintessence EvolveBackground: negative grhode'
-        ! error stop 'TQuintessence EvolveBackground: negative grhode'
-        ! return
+        global_error_message= 'TQuintessence EvolveBackground: non-positive total density'
+        yprime = 0
+        return
     end if
 
     adot=sqrt(tot/3.0d0)
@@ -822,8 +819,39 @@
       case default
         stop 'Invalid deriv in interpolated VofPhi'
       end select
-    !   convert to 1/Mpc^2 units as before
+    ! No unit conversion here: V0 is tuned directly in 1/Mpc^2 units and
+    ! V1 = grhoc + grhob is already 8*pi*G*rho_m0 in 1/Mpc^2
   end function TQuintessenceInterp_VofPhi
+
+    subroutine TQuintessenceInterp_BackgroundDensityAndPressure(this, grhov, a, grhov_t, w)
+    !Get grhov_t = 8*pi*rho_de*a**2 and (optionally) equation of state at scale factor a
+    !The density uses the full effective potential V(phi,a); the effective pressure is
+    !p_DE = phidot^2/2 - V1(phi) with V1 the bare exponential only: for the dust-like
+    !splitting the -(1/3H)*dV/dt term in w_eff exactly cancels the (F-1) part of V,
+    !so this w satisfies the conservation equation d rho_DE/dt = -3H(1+w)rho_DE
+    class(TQuintessenceInterp), intent(inout) :: this
+    real(dl), intent(in) :: grhov, a
+    real(dl), intent(out) :: grhov_t
+    real(dl), optional, intent(out) :: w
+    real(dl) V, a2, phi, phidot
+
+    if (this%is_cosmological_constant) then
+        grhov_t = grhov * a * a
+        if (present(w)) w = -1_dl
+    elseif (a >= this%astart) then
+        a2 = a**2
+        call this%ValsAta(a,phi,phidot)
+        V = this%Vofphi(a,phi,0)
+        grhov_t = phidot**2/2 + a2*V
+        if (present(w)) then
+            w = (phidot**2/2 - a2*this%V0*exp(-this%n*phi))/grhov_t
+        end if
+    else
+        grhov_t=0
+        if (present(w)) w = -1
+    end if
+
+    end subroutine TQuintessenceInterp_BackgroundDensityAndPressure
 
     subroutine TQuintessenceInterp_Init(this, State)
     use Powell
@@ -938,7 +966,6 @@
     ! om1= this%GetOmegaFromInitial(astart,initial_phi,initial_phidot,atol)
     logV0_low = -20.0_dl
     logV0_high = 20_dl
-    logV0 = this%V0
     ! if (FeedbackLevel > 1) write (*,*)  'required DE, first trial:', this%State%omega_de, om1
     if (abs(om_in-this%State%omega_de) > this%omega_tol) then
        !if not, do binary search in the interval
@@ -957,7 +984,7 @@
            write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
            write (*,*) 'om1, om2 = ', real(om1), real(om2)
            global_error_flag = error_darkenergy
-           global_error_message= 'TEarlyQuintessence No solution for V0 in provided range' ! Here we need to raise a CAMBerror so that cobaya assigns point -inf loglikelihood
+           global_error_message= 'TQuintessenceInterp No solution for V0 in provided range' ! Here we need to raise a CAMBerror so that cobaya assigns point -inf loglikelihood
            return
        end if
 
@@ -995,7 +1022,7 @@
             write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
             write (*,*) 'n, phi_i = ', real(this%n), real(this%theta_i)
             global_error_flag = error_darkenergy
-            global_error_message= 'TEarlyQuintessence ERROR finding solution for V0, ' ! Here we need to raise a CAMBerror so that cobaya assigns point -inf loglikelihood
+            global_error_message= 'TQuintessenceInterp ERROR finding solution for V0' ! Here we need to raise a CAMBerror so that cobaya assigns point -inf loglikelihood
             return
         end if
     else
@@ -1085,6 +1112,19 @@
             max_ix = ix-1
         end if
     end do
+
+    ! Reject solutions where the field leaves the F(phi) training range: outside it the
+    ! interpolators clamp to endpoint values (F constant but dF nonzero), so the force no
+    ! longer derives from the potential and the evolution would be silently inconsistent
+    if (minval(this%phi_a(1:tot_points)) < this%phi_train(1) .or. &
+        maxval(this%phi_a(1:tot_points)) > this%phi_train(size(this%phi_train))) then
+        if (FeedbackLevel > 0) write(*,*) 'TQuintessenceInterp: phi range', &
+            minval(this%phi_a(1:tot_points)), maxval(this%phi_a(1:tot_points)), &
+            ' outside training range', this%phi_train(1), this%phi_train(size(this%phi_train))
+        global_error_flag = error_darkenergy
+        global_error_message= 'TQuintessenceInterp: phi evolved outside F(phi) training range'
+        return
+    end if
 
     call spline(this%sampled_a,this%phi_a,tot_points,splZero,splZero,this%ddphi_a)
     call spline(this%sampled_a,this%phidot_a,tot_points,splZero,splZero,this%ddphidot_a)

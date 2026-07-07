@@ -478,7 +478,7 @@ class QuintessenceInterp(Quintessence):
     _fortran_class_name_ = 'TQuintessenceInterp'
 
     def set_params(self, esr_param_a0 = None, esr_param_a1 = None, esr_param_a2 = None, esr_param_a3 = None,
-                    esr_functions_file='',esr_potential_index=0, phi_min=-2, phi_max=2, n_phi=250,
+                    esr_functions_file='',esr_potential_index=0, phi_min=-5, phi_max=5, n_phi=500,
                    V0=1e-8, n = 1, c0 = 1e-8, c1=1., theta_i=0.0, frac_lambda0=0.):
 
         function_dict = load_esr_function_string(esr_functions_file, esr_potential_index)
