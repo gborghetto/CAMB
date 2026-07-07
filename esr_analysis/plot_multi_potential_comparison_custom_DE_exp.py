@@ -61,7 +61,7 @@ def load_esr_model(runname, complexity, potential_idx, file_type="original"):
         print(f"Skipping invalid function at index {potential_idx}")
         return None
 
-    chains_dir = f"./chains/camb_esr_cmblite/{runname}_new3/compl_{complexity}/{potential_idx}/results"
+    chains_dir = f"./chains/{potential_idx}/results"
     suffix_map = {"rerun": "_rerun", "iminuit": "_iminuit", "bobyqa": "_bobyqa", "original": ""}
     min_file_path = Path(chains_dir + suffix_map.get(file_type, "") + ".minimum.txt")
 
@@ -115,7 +115,7 @@ def load_esr_model(runname, complexity, potential_idx, file_type="original"):
     ddf_spline = InterpolatedUnivariateSpline(phi_train, ddV_train, k=3)
 
     # Run CAMB — try progressively wider phi ranges if the default [-2,2] fails
-    phi_ranges = [(0, 5)]
+    phi_ranges = [(-5, 5)]
     results = None
     for phi_min, phi_max in phi_ranges:
         try:
@@ -174,43 +174,6 @@ def load_esr_model(runname, complexity, potential_idx, file_type="original"):
     }
 
 
-def compute_w_eff(model, a_arr):
-    res   = model['results']
-    f_spl = model['f_spline']
-
-    phi, phidot = res.get_dark_energy_phi_phidot(a_arr)
-    V           = res.get_dark_energy_Vphi(a_arr, phi, deriv=0)
-    V0 = model['V0']
-    print(V0)
-    V1 = model['V1']
-    print('V1=',V1)
-    n = model['n']
-    a_eq = 2.6e-4
-
-    KE     = 0.5 * phidot**2
-    rho_phi = KE + V0*np.exp(-n*phi)
-    p_phi = KE - V0*np.exp(-n*phi)
-    w_phi = p_phi/rho_phi
-
-    f_phi = f_spl(phi)
-    phi_eq,_ =res.get_dark_energy_phi_phidot(a_eq)
-    f_eq = f_spl(phi_eq)
-    #phi_today = phi[np.argmin(np.abs(a_arr - 1.0))]
-    #f_today   = f_spl(phi_today)
-    p_DE = p_phi
-    rho_DE = rho_phi + V1/(a_arr**3)*(f_phi-1)
-
-    # # x from Eq. (12) — should be >= 0
-    # x = -(V1 / a_arr**3) * (f_phi - 1) / (rho_phi + 1e-60)
-    # print(x)
-
-    # w_eff = w_phi / (1 - x + 1e-60)
-    w_eff = p_DE/rho_DE
-
-    _, wphi       = np.array(res.get_dark_energy_rho_w(a_arr))
-
-    return w_phi, w_eff
-
 def hubble_check(model, a_arr):
     res   = model['results']
     f_spl  = model['f_spline']
@@ -247,7 +210,7 @@ def main():
         (4, 78, "original"),
         (4, 67, "original"),
         (4, 8, "original"),
-        (4, 123, "original"),
+        # (4, 123, "original"),
     ]
 
     runname = "V_maths"
@@ -317,13 +280,12 @@ def main():
     for i, (model, color) in enumerate(zip(esr_models, colors)):
         res = model['results']
 
-        _, wde       = np.array(res.get_dark_energy_rho_w(a_arr))
+        # get_dark_energy_rho_w returns w_eff directly (eq 3.5/3.30: p = phidot^2/2 - V1(phi),
+        # i.e. the equation of state satisfying d rho_DE/dt = -3H(1+w_eff) rho_DE)
+        _, w_eff     = np.array(res.get_dark_energy_rho_w(a_arr))
         hubble       = res.hubble_parameter(z_arr) / model['H0']
         hubble_ratio = hubble / hubble_lcdm
         H_check = hubble_check(model, a_arr) / model['H0']
-
-        # Compute w_eff
-        w_classical, w_eff = compute_w_eff(model, a_arr)
 
         delta_chi2_lcdm = model['chi2_total'] - chi2_lcdm if chi2_lcdm is not None else None
         delta_chi2_cpl  = model['chi2_total'] - chi2_cpl  if chi2_cpl  is not None else None
@@ -342,9 +304,8 @@ def main():
             chi2_parts.append(rf"$\Delta\chi^2_{{CPL}}={delta_chi2_cpl:.2f}$")
         label = rf"$f(\phi)={f_str}$ ({param_str})" + "\n" + "\n".join(chi2_parts)
 
-        # w (solid) and w_eff (dashed)
-        ax_dict['w_de'].plot(z_arr, w_classical,   color=color, linewidth=2, linestyle='-')
-        ax_dict['w_de'].plot(z_arr, w_eff, color=color, linewidth=2, linestyle='--')
+        # w_eff only
+        ax_dict['w_de'].plot(z_arr, w_eff, color=color, linewidth=2, linestyle='-')
 
         ax_dict['hubble'].plot(z_arr, hubble_ratio, color=color, linewidth=2)
         #ax_dict['hubble'].plot(z_arr, H_check/ hubble_lcdm, color=color, linewidth=2, linestyle='--')
@@ -380,13 +341,11 @@ def main():
     # Legend proxy entries
     ax_dict['potential'].plot([], [], color='black', linestyle='-.', linewidth=2, label=r'$\Lambda$CDM')
     ax_dict['potential'].plot([], [], color='gray',  linestyle='--', linewidth=2, label='CPL')
-    ax_dict['potential'].plot([], [], 'k-',  linewidth=2, label=r'$w$')
-    ax_dict['potential'].plot([], [], 'k--', linewidth=2, label=r'$w_\mathrm{eff}$')
 
 
     # Formatting
     ax_dict['w_de'].set_xlabel(r'$z$')
-    ax_dict['w_de'].set_ylabel(r'$w(z)$')
+    ax_dict['w_de'].set_ylabel(r'$w_\mathrm{eff}(z)$')
     ax_dict['w_de'].set_xlim(0, 2.4)
     ax_dict['w_de'].grid(True, alpha=0.3)
     ax_dict['w_de'].set_ylim([-1.5,-0.3])
