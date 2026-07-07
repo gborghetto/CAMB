@@ -24,7 +24,8 @@
     use constants
     use classes
     use Interpolation
-    use PotentialInterpolator, only: PotentialInterpolator1D
+    use esr_potentials, only: esr_eval
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     implicit none
     private
 
@@ -81,16 +82,18 @@
     procedure :: calc_zc_fde
     end type TEarlyQuintessence
 
-    type, extends(TQuintessence) :: TQuintessenceInterp ! new class for the interpolated potential
-        real(dl), dimension(:), allocatable :: phi_train
-        real(dl), dimension(:), allocatable :: V_train
-        real(dl), dimension(:), allocatable :: dV_train
-        real(dl), dimension(:), allocatable :: ddV_train
-        real(dl) :: V0 = 1e-8 !m in reduced Planck mass units
-        real(dl) :: V1 = 1e-8
-        real(dl) :: n = 1.0_dl
-        real(dl) :: c0 = 1e-8
-        real(dl) :: c1 = 1.0_dl
+    type, extends(TQuintessence) :: TQuintessenceInterp ! analytic ESR coupling function F(phi)
+        ! F(phi) and its derivatives are evaluated analytically from the compiled esr_potentials
+        ! module, selected by (esr_lib, esr_index); esr_a0..esr_a3 are the function parameters.
+        integer :: esr_lib = 0    !library id (see camb/_esr_libmap.py), set from esr_functions_file
+        integer :: esr_index = 0  !function index == line number in the unique_equations file
+        real(dl) :: esr_a0 = 0._dl
+        real(dl) :: esr_a1 = 0._dl
+        real(dl) :: esr_a2 = 0._dl
+        real(dl) :: esr_a3 = 0._dl
+        real(dl) :: V0 = 1e-8 !amplitude of the bare exponential V1(phi)=V0 exp(-n phi), tuned to Omega_de
+        real(dl) :: V1 = 1e-8 !coefficient of the (F-1) term; set to grhoc+grhob at Init (8 pi G rho_m0)
+        real(dl) :: n = 1.0_dl !exponential slope lambda of the bare potential
         real(dl) :: theta_i = 0.0_dl !initial field value
         real(dl) :: frac_lambda0 = 0._dl !fraction of dark energy density that is cosmological constant today
         integer :: npoints = 5000 !baseline number of log a steps; will be increased if needed when there are oscillations
@@ -98,9 +101,6 @@
         real(dl), dimension(:), allocatable :: fde, ddfde
         real(dl) :: omega_tol = 1d-6 !tolerance for OmegaDE
         real(dl) :: atol = 1e-8_dl
-        type(PotentialInterpolator1D) :: V_interpolator
-        type(PotentialInterpolator1D) :: dV_interpolator
-        type(PotentialInterpolator1D) :: ddV_interpolator
     contains
     procedure :: Vofphi => TQuintessenceInterp_VofPhi
     procedure :: Init => TQuintessenceInterp_Init
@@ -224,10 +224,12 @@
     ! write (*,*) 'EvolveBackground: a, phi, phidot, grhode, tot = ', a, phi, phidot, grhode, tot
 
     ! Note grhode < 0 is allowed: for the time-dependent potential the effective DE
-    ! density can be transiently negative; only the total density must stay positive
-    if (tot <= 0.0_dl) then
+    ! density can be transiently negative; only the total density must stay positive.
+    ! A NaN grhode means the analytic F(phi) hit a singularity (e.g. field ran to a domain
+    ! where the ESR function is undefined) -- reject the point.
+    if (ieee_is_nan(tot) .or. tot <= 0.0_dl) then
         global_error_flag = error_darkenergy
-        global_error_message= 'TQuintessence EvolveBackground: non-positive total density'
+        global_error_message= 'TQuintessence EvolveBackground: non-positive or NaN total density'
         yprime = 0
         return
     end if
@@ -804,18 +806,26 @@
     real(dl) phi,Vofphi
     real(dl), intent(in) :: a
     integer :: deriv
+    real(dl) :: pars(0:3), F
+
+    ! F = esr_eval(...,0,...), F' = esr_eval(...,1,...), F'' = esr_eval(...,2,...), evaluated
+    ! analytically (no interpolation table). NaN => stubbed/singular entry; Init rejects those.
+    ! esr_index < 0 is the reserved "no coupling" case F(phi) = 1: recovers minimal quintessence
+    ! with the bare potential V1(phi) = V0 exp(-n phi).
+    if (this%esr_index < 0) then
+        F = merge(1._dl, 0._dl, deriv == 0)
+    else
+        pars = [this%esr_a0, this%esr_a1, this%esr_a2, this%esr_a3]
+        F = esr_eval(this%esr_lib, this%esr_index, deriv, phi, pars)
+    end if
 
     select case(deriv)
       case (0)
-        Vofphi = this%V0*exp(-this%n*phi) + this%V1/a**3 * (this%V_interpolator%interpolate(phi) - 1) !this%V0*exp(-this%n*phi) + this%V1*exp(-this%n2*phi)/a**3 - this%V1/a**3
-        ! Vofphi = this%V0*exp(-this%n*phi) + this%V1/a**this%c1 * this%V_interpolator%interpolate(phi) - this%V1/a**3
-
+        Vofphi = this%V0*exp(-this%n*phi) + this%V1/a**3 * (F - 1)
       case (1)
-        Vofphi = -this%V0*this%n*exp(-this%n*phi) + this%V1/a**3 * this%dV_interpolator%interpolate(phi) !-this%V0*this%n*exp(-this%n*phi) - this%V1*this%n2*exp(-this%n2*phi)/a**3
-        ! Vofphi = -this%V0*this%n*exp(-this%n*phi) + this%V1/a**this%c1 * this%dV_interpolator%interpolate(phi)
+        Vofphi = -this%V0*this%n*exp(-this%n*phi) + this%V1/a**3 * F
       case (2)
-        Vofphi = this%V0*this%n**2*exp(-this%n*phi) + this%V1/a**3 * this%ddV_interpolator%interpolate(phi) !this%V0*this%n**2*exp(-this%n*phi) + this%V1*this%n2**2*exp(-this%n2*phi)/a**3
-        ! Vofphi = this%V0*this%n**2*exp(-this%n*phi) + this%V1/a**this%c1 * this%ddV_interpolator%interpolate(phi)
+        Vofphi = this%V0*this%n**2*exp(-this%n*phi) + this%V1/a**3 * F
       case default
         stop 'Invalid deriv in interpolated VofPhi'
       end select
@@ -878,14 +888,6 @@
     !integer  :: phi0_iter
     !integer, parameter :: max_phi0_iter = 20
 
-    call this%V_interpolator%init(this%phi_train,this%V_train)
-    call this%dV_interpolator%init(this%phi_train,this%dV_train)
-    call this%ddV_interpolator%init(this%phi_train,this%ddV_train)
-
-    if (FeedbackLevel > 0) write(*,*) 'Initialized Quintessence interpolation with', size(this%phi_train), 'points from ', this%phi_train(1), ' to ', this%phi_train(size(this%phi_train))
-
-
-
     !if (this%model_idx==4) then !Cosine, n = f
     !    if (FeedbackLevel > 0) write (*,*)  'Cosine potential' ! = phi/f
     !elseif (this%model_idx==3) then !FT Hilltop, n = phi0
@@ -904,6 +906,16 @@
 
     call this%TQuintessence%Init(State)
     this%V1 = this%State%grhoc + this%State%grhob
+
+    ! Reject stubbed/invalid ESR entries: esr_eval returns NaN for functions with no analytic
+    ! form for F, F' or F'' (constant in phi, singular, or DiracDelta in the 2nd derivative).
+    if (ieee_is_nan(this%Vofphi(1._dl, this%theta_i, 0)) .or. &
+        ieee_is_nan(this%Vofphi(1._dl, this%theta_i, 1)) .or. &
+        ieee_is_nan(this%Vofphi(1._dl, this%theta_i, 2))) then
+        global_error_flag = error_darkenergy
+        global_error_message = 'TQuintessenceInterp: ESR function (lib,index) is invalid/stubbed'
+        return
+    end if
 
     this%dloga = (-this%log_astart)/(this%npoints-1)
 
@@ -1113,18 +1125,9 @@
         end if
     end do
 
-    ! Reject solutions where the field leaves the F(phi) training range: outside it the
-    ! interpolators clamp to endpoint values (F constant but dF nonzero), so the force no
-    ! longer derives from the potential and the evolution would be silently inconsistent
-    if (minval(this%phi_a(1:tot_points)) < this%phi_train(1) .or. &
-        maxval(this%phi_a(1:tot_points)) > this%phi_train(size(this%phi_train))) then
-        if (FeedbackLevel > 0) write(*,*) 'TQuintessenceInterp: phi range', &
-            minval(this%phi_a(1:tot_points)), maxval(this%phi_a(1:tot_points)), &
-            ' outside training range', this%phi_train(1), this%phi_train(size(this%phi_train))
-        global_error_flag = error_darkenergy
-        global_error_message= 'TQuintessenceInterp: phi evolved outside F(phi) training range'
-        return
-    end if
+    ! Note: with analytic F(phi) there is no training range to leave -- F and its derivatives
+    ! are defined for all phi. Points where F is genuinely singular (NaN/Inf) are caught by the
+    ! NaN guard in EvolveBackground during the integration above.
 
     call spline(this%sampled_a,this%phi_a,tot_points,splZero,splZero,this%ddphi_a)
     call spline(this%sampled_a,this%phidot_a,tot_points,splZero,splZero,this%ddphidot_a)

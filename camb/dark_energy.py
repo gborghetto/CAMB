@@ -220,9 +220,27 @@ class EarlyQuintessence(Quintessence):
             self.zc = zc
             self.fde_zc = fde_zc
 
+import os
 import sympy
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
+
+
+def esr_library_id(esr_functions_file):
+    """Map an ESR functions file path to the integer library id compiled into esr_potentials.f90.
+
+    The key is the two path components under function_library/, e.g. 'V_maths/compl_4'.
+    The map is generated alongside esr_potentials.f90 by fortran/generate_esr_potentials.py.
+    """
+    from ._esr_libmap import LIBRARY_IDS
+    d = os.path.dirname(os.path.abspath(esr_functions_file))
+    key = os.path.join(os.path.basename(os.path.dirname(d)), os.path.basename(d))
+    if key not in LIBRARY_IDS:
+        raise CAMBError(
+            f"ESR library '{key}' (from {esr_functions_file}) is not compiled into esr_potentials. "
+            f"Available: {sorted(LIBRARY_IDS)}. Regenerate with fortran/generate_esr_potentials.py.")
+    return LIBRARY_IDS[key]
+
 
 def is_function_valid(func_string: str) -> bool:
     """
@@ -451,24 +469,20 @@ class QuintessenceInterp(Quintessence):
     """
 
     _fields_ = [
-        ("phi_train", AllocatableArrayDouble, "nodes for spline interpolation of VofPhi"),
-        ("V_train", AllocatableArrayDouble, "V(phi) at nodes"),
-        ("dV_train", AllocatableArrayDouble, "dV/dphi at nodes"),
-        ("ddV_train", AllocatableArrayDouble, "d^2V/dphi^2 at nodes"),
+        ("esr_lib", c_int, "ESR library id (see camb/_esr_libmap.py); set from esr_functions_file"),
+        ("esr_index", c_int, "ESR function index == line number in the unique_equations file"),
+        ("esr_a0", c_double, "ESR function parameter a0"),
+        ("esr_a1", c_double, "ESR function parameter a1"),
+        ("esr_a2", c_double, "ESR function parameter a2"),
+        ("esr_a3", c_double, "ESR function parameter a3"),
         ("V0", c_double, "Overall potential amplitude "
                         " used for tuning to get correct DE density today"),
         ("V1", c_double),
         ('n', c_double),
-        ('c0', c_double),
-        ('c1', c_double),
         ("theta_i", c_double, "phi_init initial field value"),
         ("frac_lambda0", c_double, "fraction of dark energy in cosmological constant today"),
-        # ("use_zc", c_bool, "solve for f, m to get specific critical reshift zc and fde_zc"),
-        # ("zc", c_double, "reshift of peak fractional early dark energy density"),
-        # ("fde_zc", c_double, "fraction of early dark energy density to total at peak"),
         ("npoints", c_int, "number of points for background integration spacing"),
         ("min_steps_per_osc", c_int, "minimumum number of steps per background oscillation scale"),
-        #("model_idx", c_int, "which quintessence model (VofPhi) to use"),
         ("fde", AllocatableArrayDouble, "after initialized, the calculated background early dark energy "
                                         "fractions at sampled_a"),
         ("__ddfde", AllocatableArrayDouble),
@@ -477,53 +491,21 @@ class QuintessenceInterp(Quintessence):
     ] # type: ignore
     _fortran_class_name_ = 'TQuintessenceInterp'
 
-    def set_params(self, esr_param_a0 = None, esr_param_a1 = None, esr_param_a2 = None, esr_param_a3 = None,
-                    esr_functions_file='',esr_potential_index=0, phi_min=-5, phi_max=5, n_phi=500,
-                   V0=1e-8, n = 1, c0 = 1e-8, c1=1., theta_i=0.0, frac_lambda0=0.):
-
-        function_dict = load_esr_function_string(esr_functions_file, esr_potential_index)
-        # print(f"Loaded ESR function dictionary with potential index {esr_potential_index} from file {esr_functions_file}: {function_dict}")
-
-        if not function_dict['valid']:
-            raise CAMBError(f"ESR function at index {esr_potential_index} is invalid.")
-
-        esr_params = []
-        if esr_param_a0 is not None:
-            esr_params.append(esr_param_a0)
-        if esr_param_a1 is not None:
-            esr_params.append(esr_param_a1)
-        if esr_param_a2 is not None:
-            esr_params.append(esr_param_a2)
-        if esr_param_a3 is not None:
-            esr_params.append(esr_param_a3)
-
-        esr_param_symbols = function_dict['param_symbols']
-        # esr_param_names = [str(p) for p in function_dict['param_symbols']]
-        # esr_function_string = function_dict['func_string']
-        esr_function_template = function_dict['expr_template']
-        phi_vals = np.linspace(phi_min, phi_max, n_phi)
-        potential_dict = create_potential_table(esr_function_template,
-                                                    esr_param_symbols,
-                                                    esr_params, phi_vals)
-        success = potential_dict['success']
-        if not success:
-            raise CAMBError("Failed to create a valid potential table from ESR function for the given esr parameters")
-
-        phi_train = potential_dict['phi_train']
-        V_train = potential_dict['V_train']
-        dV_train = potential_dict['dV_train']
-        ddV_train = potential_dict['ddV_train']
-
-
-        self.phi_train = np.ascontiguousarray(phi_train, dtype=np.float64)
-        self.V_train = np.ascontiguousarray(V_train, dtype=np.float64)
-        self.dV_train = np.ascontiguousarray(dV_train, dtype=np.float64)
-        self.ddV_train = np.ascontiguousarray(ddV_train, dtype=np.float64)
+    def set_params(self, esr_param_a0=None, esr_param_a1=None, esr_param_a2=None, esr_param_a3=None,
+                   esr_functions_file='', esr_potential_index=0,
+                   V0=1e-8, n=1, theta_i=0.0, frac_lambda0=0., **kwargs):
+        # F(phi) is evaluated analytically in Fortran from the compiled esr_potentials module;
+        # here we only select the (library, index) and pass the function parameters a0..a3.
+        # (phi_min/phi_max/n_phi and the old Python table-building are no longer needed; if the
+        # (lib, index) is a stubbed/invalid entry, the Fortran Init raises a CAMB error.)
+        self.esr_lib = esr_library_id(esr_functions_file)
+        self.esr_index = esr_potential_index
+        self.esr_a0 = esr_param_a0 or 0.0
+        self.esr_a1 = esr_param_a1 or 0.0
+        self.esr_a2 = esr_param_a2 or 0.0
+        self.esr_a3 = esr_param_a3 or 0.0
         self.V0 = V0
-        #self.V1 = V1
         self.n = n
-        self.c0 = c0
-        self.c1 = c1
         self.theta_i = theta_i
         self.frac_lambda0 = frac_lambda0
 
