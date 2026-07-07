@@ -83,3 +83,7 @@ AI*
 
 scripts
 uv.lock
+/chains
+/chains_+1
+/chains_test_8
+/logs
