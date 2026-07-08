@@ -47,22 +47,16 @@ def run_coupled(args):
         if val is not None:
             esr_params[f'esr_param_a{i}'] = val
     de.set_params(esr_functions_file=args.esr_file, esr_potential_index=args.esr_index,
-                  phi_min=args.phi_min, phi_max=args.phi_max,
                   n=args.lam, theta_i=args.theta_i, **esr_params)
     return get_background(de, args)
 
 
 def run_uncoupled(args):
-    # F(phi) identically 1: the (F-1) term and its phi-derivatives vanish, so the same
-    # class evolves minimal quintessence with the bare V1(phi) = V0*exp(-lambda*phi)
+    # esr_potential_index = -1 is the reserved "no coupling" case F(phi) = 1: the (F-1) term and
+    # its derivatives vanish, so the class evolves minimal quintessence with V1(phi)=V0 exp(-lam phi)
     de = QuintessenceInterp()
-    phi = np.linspace(args.phi_min, args.phi_max, 100)
-    de.phi_train = np.ascontiguousarray(phi)
-    de.V_train = np.ones_like(phi)
-    de.dV_train = np.zeros_like(phi)
-    de.ddV_train = np.zeros_like(phi)
-    de.n = args.lam
-    de.theta_i = args.theta_i
+    de.set_params(esr_functions_file=args.esr_file, esr_potential_index=-1,
+                  n=args.lam, theta_i=args.theta_i)
     return get_background(de, args)
 
 
@@ -92,8 +86,6 @@ def main():
     p.add_argument('--a3', type=float, default=None)
     p.add_argument('--lam', type=float, default=0.965081, help='exponent lambda of V1')
     p.add_argument('--theta-i', type=float, default=1.129909, help='initial field value')
-    p.add_argument('--phi-min', type=float, default=0.0)
-    p.add_argument('--phi-max', type=float, default=5.0)
     p.add_argument('--H0', type=float, default=66.264064)
     p.add_argument('--ombh2', type=float, default=0.022287)
     p.add_argument('--omch2', type=float, default=0.119094)

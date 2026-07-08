@@ -39,8 +39,6 @@ def create_cobaya_info_dict(esr_functions_file, potential_function_index,
                     "dark_energy_model": 'QuintessenceInterp',
                     "esr_functions_file": esr_functions_file,
                     "esr_potential_index": potential_function_index,
-                    "phi_min": 0.0,
-                    "phi_max": 5.0,
                 }
             }
         },

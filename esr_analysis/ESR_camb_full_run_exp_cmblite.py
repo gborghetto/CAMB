@@ -46,9 +46,6 @@ def create_cobaya_info_dict(esr_functions_file, potential_function_index, esr_sa
                     "dark_energy_model": 'QuintessenceInterp',
                     "esr_functions_file": esr_functions_file,
                     "esr_potential_index": potential_function_index,
-                    #"exp_mapping": False,
-                    "phi_min": 0.0,
-                    "phi_max": 5.0,
                 }
             }
         },
@@ -126,22 +123,8 @@ def create_cobaya_info_dict(esr_functions_file, potential_function_index, esr_sa
                 "ref": {"dist": "norm", "loc": 0.5, "scale": 0.05},
                 "proposal": 0.05
             },
-        #    "log_c0": {
-        #        "latex": r"\log(c_0)",
-        #        "prior": {"min": -10, "max": -6},
-        #        "ref": {"dist": "norm", "loc": -8, "scale": 0.1},
-        #        "proposal": 0.05
-        #    },
-        #    "c0": {
-        #        "latex": r"c_0",
-        #        "value": 'lambda log_c0: 10**log_c0',
-        #    },
-           "c1": {
-                "latex": r"n",
-                "prior": {"min": -5, "max": 5},
-                "ref": {"dist": "norm", "loc": 3.0, "scale": 0.05},
-                "proposal": 0.05
-            },
+            # Note: the old c0/c1 knobs (second scale-factor power a**c1) are gone -- the
+            # analytic interface has no such field, so they are not sampled.
 
             # Derived parameters
             "chi2__BAO": {

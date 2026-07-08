@@ -11,11 +11,11 @@ if CAMB_PATH not in sys.path:
 
 import camb
 print(f"Using CAMB from: {camb.__file__}")
-from camb.dark_energy import load_esr_function_string, create_potential_table
+from camb.dark_energy import load_esr_function_string
 import numpy as np
 import pandas as pd
+import sympy as sp
 from pathlib import Path
-from scipy.interpolate import InterpolatedUnivariateSpline
 import matplotlib.pyplot as plt
 import re
 import matplotlib
@@ -93,61 +93,31 @@ def load_esr_model(runname, complexity, potential_idx, file_type="original"):
         esr_params.append(val)
         camb_esr_params[camb_param] = val
 
-    # Build f(phi) table and splines — create_potential_table takes phi_vals for V(phi) version
-    phi_vals = np.linspace(0, 5, 500)
-    potential_dict = create_potential_table(
-        function_dict['expr_template'],
-        function_dict['param_symbols'],
-        esr_params, phi_vals
-    )
-    if not potential_dict['success']:
-        print(f"Potential table creation failed for index {potential_idx}")
+    # Analytic F(phi): substitute the fitted parameters into the ESR expression and lambdify.
+    # This is exactly the function CAMB now evaluates in Fortran (esr_potentials), so no
+    # interpolation table is built here -- f_func is used only for the f(phi) plot panel.
+    x = sp.Symbol('x', real=True)
+    f_expr = function_dict['expr_template'].subs(
+        {s: v for s, v in zip(function_dict['param_symbols'], esr_params)})
+    f_func = sp.lambdify(x, f_expr, 'numpy')
+
+    # Run CAMB (analytic interface: index selects the compiled function; no phi range needed)
+    try:
+        pars = camb.set_params(H0=H0, ombh2=ombh2, omch2=omch2,
+                               dark_energy_model='QuintessenceInterp',
+                               theta_i=theta_i, n=n,
+                               esr_functions_file=esr_functions_file,
+                               esr_potential_index=potential_idx,
+                               **camb_esr_params)
+        results = camb.get_background(pars)
+    except Exception as e:
+        print(f"  Index {potential_idx}: CAMB failed ({e}); skipping.")
         return None
+    omrh2 = results.Params.omnuh2
+    print(f"  Index {potential_idx}: succeeded")
 
-    phi_train  = potential_dict['phi_train']
-    V_train    = potential_dict['V_train']    # f(phi) values
-    dV_train   = potential_dict['dV_train']   # f'(phi)
-    ddV_train  = potential_dict['ddV_train']  # f''(phi)
-
-    # Splines for f(phi) and its derivatives
-    f_spline   = InterpolatedUnivariateSpline(phi_train, V_train,   k=3)
-    df_spline  = InterpolatedUnivariateSpline(phi_train, dV_train,  k=3)
-    ddf_spline = InterpolatedUnivariateSpline(phi_train, ddV_train, k=3)
-
-    # Run CAMB — try progressively wider phi ranges if the default [-2,2] fails
-    phi_ranges = [(-5, 5)]
-    results = None
-    for phi_min, phi_max in phi_ranges:
-        try:
-            pars = camb.set_params(H0=H0, ombh2=ombh2, omch2=omch2,
-                                    dark_energy_model='QuintessenceInterp',
-                                    theta_i=theta_i, n=n,
-                                    phi_min=phi_min, phi_max=phi_max,
-                                    esr_functions_file=esr_functions_file,
-                                    esr_potential_index=potential_idx,
-                                    **camb_esr_params)
-            results = camb.get_background(pars)
-            omrh2 = results.Params.omnuh2
-            print(f"  Index {potential_idx}: succeeded with phi in [{phi_min}, {phi_max}]")
-            # Rebuild splines over the same phi range actually used
-            phi_vals_used = np.linspace(phi_min, phi_max, 500)
-            pot = create_potential_table(function_dict['expr_template'],
-                                         function_dict['param_symbols'],
-                                         esr_params, phi_vals_used)
-            if pot['success']:
-                phi_train  = pot['phi_train']
-                V_train    = pot['V_train']
-                dV_train   = pot['dV_train']
-                ddV_train  = pot['ddV_train']
-                f_spline   = InterpolatedUnivariateSpline(phi_train, V_train,   k=3)
-                df_spline  = InterpolatedUnivariateSpline(phi_train, dV_train,  k=3)
-                ddf_spline = InterpolatedUnivariateSpline(phi_train, ddV_train, k=3)
-            break
-        except Exception as e:
-            print(f"  Index {potential_idx}: phi=[{phi_min},{phi_max}] failed: {e}")
-    if results is None:
-        print(f"  Index {potential_idx}: all phi ranges failed, skipping.")
-        return None
+    # phi range actually visited by the field (for the f(phi) plot panel)
+    phi_traj, _ = results.get_dark_energy_phi_phidot(np.linspace(1e-3, 1.0, 500))
     V1 = results.Params.DarkEnergy.V1
     V0 = results.Params.DarkEnergy.V0
     n = results.Params.DarkEnergy.n
@@ -163,11 +133,8 @@ def load_esr_model(runname, complexity, potential_idx, file_type="original"):
         'complexity':    complexity,
         'potential_idx': potential_idx,
         'file_type':     file_type,
-        'phi_train':     phi_train,
-        'V_train':       V_train,
-        'f_spline':      f_spline,
-        'df_spline':     df_spline,
-        'ddf_spline':    ddf_spline,
+        'f_func':        f_func,
+        'phi_range':     (float(np.min(phi_traj)), float(np.max(phi_traj))),
         'V0':            V0,
         'V1':            V1,
         'n':             n,
@@ -176,7 +143,7 @@ def load_esr_model(runname, complexity, potential_idx, file_type="original"):
 
 def hubble_check(model, a_arr):
     res   = model['results']
-    f_spl  = model['f_spline']
+    f_func = model['f_func']
     V1     = model['V1']
     H0    = model['H0']
     V0    = model['V0']
@@ -190,10 +157,10 @@ def hubble_check(model, a_arr):
 
     phi, phidot = res.get_dark_energy_phi_phidot(a_arr)
 
-    f_phi = f_spl(phi)
+    f_phi = f_func(phi) * np.ones_like(phi)
 
-    # V_eff = Fortran VofPhi: V0*exp(-n*phi) + V1/a^3 * f(phi)
-    V_full  = V0 * np.exp(-n * phi) + V1 / a_arr**3 * f_phi
+    # V_eff = Fortran VofPhi(deriv=0): V0*exp(-n*phi) + V1/a^3 * (f(phi) - 1)
+    V_full  = V0 * np.exp(-n * phi) + V1 / a_arr**3 * (f_phi - 1)
     grhov_t = 0.5 * phidot**2 + a_arr**2 * V_full
 
     grho_no_de = (grhob + grhoc) * a_arr + (grhog + grhornomass)
@@ -310,12 +277,11 @@ def main():
         ax_dict['hubble'].plot(z_arr, hubble_ratio, color=color, linewidth=2)
         #ax_dict['hubble'].plot(z_arr, H_check/ hubble_lcdm, color=color, linewidth=2, linestyle='--')
 
-        # Plot f(phi) vs phi over the full training range
-        f_spl   = model['f_spline']
-        phi_min = model['phi_train'].min()
-        phi_max = model['phi_train'].max()
-        phi_full = np.linspace(phi_min, phi_max, 500)
-        f_vals   = f_spl(phi_full)
+        # Plot f(phi) vs phi over the range the field actually visits (analytic F)
+        phi_lo, phi_hi = model['phi_range']
+        pad = 0.05 * (phi_hi - phi_lo) + 1e-3
+        phi_full = np.linspace(phi_lo - pad, phi_hi + pad, 500)
+        f_vals = model['f_func'](phi_full) * np.ones_like(phi_full)
         ax_dict['potential'].plot(phi_full, f_vals, color=color, linewidth=2, label=label)
 
     # CPL uncertainty bands

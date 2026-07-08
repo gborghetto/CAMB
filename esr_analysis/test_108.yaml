@@ -1,6 +1,6 @@
 theory:
   camb:
-    path: /Users/giuliaborghetto/CAMB_V_phi_interp
+    path: /Users/amk_1/cosmocodes/ESR_V_Phi/CAMB
     stop_at_error: false
     extra_args:
       halofit_version: mead
@@ -9,7 +9,7 @@ theory:
       num_massive_neutrinos: 1
       nnu: 3.046
       dark_energy_model: QuintessenceInterp
-      esr_functions_file: /Users/giuliaborghetto/CAMB_V_phi_interp/function_library/V_maths/compl_4/unique_equations_4.txt
+      esr_functions_file: /Users/amk_1/cosmocodes/ESR_V_Phi/CAMB/function_library/V_maths/compl_4/unique_equations_4.txt
       esr_potential_index: 8
 likelihood:
   cmb_lite_3d: null
@@ -48,4 +48,4 @@ params:
     derived: true
 sampler:
  evaluate:
-output: /Users/giuliaborghetto/CAMB_V_phi_interp/esr_analysis/chains/test_B_maths/108/108
+output: /Users/amk_1/cosmocodes/ESR_V_Phi/CAMB/esr_analysis/chains/test_108/108

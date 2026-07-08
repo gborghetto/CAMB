@@ -54,6 +54,9 @@
     procedure :: EvolveBackgroundLog
     procedure :: GetOmegaFromInitial
     procedure, private :: phidot_start => TQuintessence_phidot_start
+#ifdef __GFORTRAN__
+    final :: TQuintessence_Free ! deallocate arrays on destruction (gcc allocatable-component leak)
+#endif
     end type TQuintessence
 
     ! Specific implementation for early quintessence + cosmologial constant, assuming the early component
@@ -80,6 +83,9 @@
     procedure, private :: fde_peak
     procedure, private :: check_error
     procedure :: calc_zc_fde
+#ifdef __GFORTRAN__
+    final :: TEarlyQuintessence_Free
+#endif
     end type TEarlyQuintessence
 
     type, extends(TQuintessence) :: TQuintessenceInterp ! analytic ESR coupling function F(phi)
@@ -109,13 +115,43 @@
     procedure, nopass :: PythonClass => TQuintessenceInterp_PythonClass
     procedure, nopass :: SelfPointer => TQuintessenceInterp_SelfPointer
     procedure, private :: check_errorQ
-
+#ifdef __GFORTRAN__
+    final :: TQuintessenceInterp_Free
+#endif
     end type TQuintessenceInterp
 
     procedure(TClassDverk) :: dverk
 
     public TQuintessence, TEarlyQuintessence,TQuintessenceInterp
     contains
+
+#ifdef __GFORTRAN__
+    ! Finalizers deallocate the background-table arrays when the object is destroyed. Without
+    ! them gfortran leaks the allocatable components each time CAMB creates a new dark-energy
+    ! object (once per likelihood evaluation), which over a long MCMC reaches many GB. The stock
+    ! CAMB EqnOfState classes (fluid/PPF) already do this via TDarkEnergyEqnOfState_Free; these
+    ! Quintessence classes extend TDarkEnergyModel directly and so need their own.
+    subroutine TQuintessence_Free(this)
+    type(TQuintessence), intent(inout) :: this
+    if (allocated(this%sampled_a)) deallocate(this%sampled_a)
+    if (allocated(this%phi_a)) deallocate(this%phi_a)
+    if (allocated(this%phidot_a)) deallocate(this%phidot_a)
+    if (allocated(this%ddphi_a)) deallocate(this%ddphi_a)
+    if (allocated(this%ddphidot_a)) deallocate(this%ddphidot_a)
+    end subroutine TQuintessence_Free
+
+    subroutine TEarlyQuintessence_Free(this)
+    type(TEarlyQuintessence), intent(inout) :: this
+    if (allocated(this%fde)) deallocate(this%fde)
+    if (allocated(this%ddfde)) deallocate(this%ddfde)
+    end subroutine TEarlyQuintessence_Free
+
+    subroutine TQuintessenceInterp_Free(this)
+    type(TQuintessenceInterp), intent(inout) :: this
+    if (allocated(this%fde)) deallocate(this%fde)
+    if (allocated(this%ddfde)) deallocate(this%ddfde)
+    end subroutine TQuintessenceInterp_Free
+#endif
 
     function VofPhi(this, a, phi, deriv)
     !Get the quintessence potential as function of phi and scale factor a
@@ -875,7 +911,7 @@
     real(dl) lastsign, da_osc, last_a, a_c
     real(dl) initial_phi, initial_phidot, a2, logV0_in, logV0, logV0_1, logV0_2,logV0_low, logV0_high, deltalogV0, V0_input, om, om_in ,om1,om2,atol,astart
     real(dl), dimension(:), allocatable :: sampled_a, phi_a, phidot_a, fde
-    integer npoints, tot_points, max_ix
+    integer npoints, tot_points, max_ix, max_points
     logical has_peak, OK
     real(dl) fzero, xzero
     integer iflag, iter
@@ -927,6 +963,9 @@
         deallocate(this%phi_a,this%phidot_a)
         deallocate(this%ddphi_a,this%ddphidot_a, this%sampled_a)
     end if
+    ! fde/ddfde are re-allocated below; free them too so re-Init on a reused object does not leak
+    if (allocated(this%fde)) deallocate(this%fde)
+    if (allocated(this%ddfde)) deallocate(this%ddfde)
     allocate(phi_a(npoints),phidot_a(npoints), sampled_a(npoints), fde(npoints))
 
     if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0', this%V0,this%n ! just for testing
@@ -993,8 +1032,12 @@
        om2= this%GetOmegaFromInitial(astart,initial_phi,initial_phidot, atol)
        if (FeedbackLevel > 1) write (*,*)  'Searching for V0 in range [log10_low,log10_high] :', logV0_low, logV0_high
        if (om1 > this%State%omega_de .or. om2 < this%State%omega_de) then
-           write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
-           write (*,*) 'om1, om2 = ', real(om1), real(om2)
+           ! Expected for parameter points that cannot tune to Omega_de; keep quiet unless
+           ! debugging (this fires on every rejected MCMC proposal and floods the log otherwise)
+           if (FeedbackLevel > 0) then
+               write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
+               write (*,*) 'om1, om2 = ', real(om1), real(om2)
+           end if
            global_error_flag = error_darkenergy
            global_error_message= 'TQuintessenceInterp No solution for V0 in provided range' ! Here we need to raise a CAMBerror so that cobaya assigns point -inf loglikelihood
            return
@@ -1031,8 +1074,10 @@
         if (FeedbackLevel > 0) write(*,*) 'Omega_DE from scalar field with adjusted V0 is ',om1
 
         if (.not. OK) then !stop 'Search for good intial conditions did not converge'
-            write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
-            write (*,*) 'n, phi_i = ', real(this%n), real(this%theta_i)
+            if (FeedbackLevel > 0) then
+                write (*,*) 'No solution for V0 in provided range [V1,V2] = ', 10**(logV0_low), 10**(logV0_high)
+                write (*,*) 'n, phi_i = ', real(this%n), real(this%theta_i)
+            end if
             global_error_flag = error_darkenergy
             global_error_message= 'TQuintessenceInterp ERROR finding solution for V0' ! Here we need to raise a CAMBerror so that cobaya assigns point -inf loglikelihood
             return
@@ -1093,12 +1138,26 @@
     this%da = min(this%max_a_log *(exp(this%dloga)-1), &
         da_osc/this%min_steps_per_osc, (1- this%max_a_log)/(this%npoints-this%npoints_log))
     this%npoints_linear = int((1- this%max_a_log)/ this%da)+1
+
+    ! Allocate the background tables at a FIXED capacity rather than the data-dependent tot_points.
+    ! tot_points varies strongly with the field dynamics (~9k for a monotonic roll, up to ~44k when
+    ! the field oscillates, at npoints=5000). Allocating that variable size on every call fragments
+    ! the malloc arena over the many likelihood evaluations of an MCMC -- freed blocks of differing
+    ! sizes are not reused and macOS never returns them to the OS -- which is what drove multi-GB
+    ! growth over a long run. A fixed capacity makes every allocation identical so blocks are reused.
+    ! The capacity is a generous multiple of npoints so the adaptive oscillation sampling is still
+    ! captured; a rare case needing more is capped (with a warning) rather than overflowing.
+    max_points = 10*this%npoints
+    if (this%npoints_log + this%npoints_linear > max_points) then
+        this%npoints_linear = max_points - this%npoints_log
+        if (FeedbackLevel>0) write(*,*) 'TQuintessenceInterp: background table capped at max_points =', max_points
+    end if
     this%da = (1- this%max_a_log)/this%npoints_linear
 
     tot_points = this%npoints_log+this%npoints_linear
-    allocate(this%phi_a(tot_points),this%phidot_a(tot_points))
-    allocate(this%ddphi_a(tot_points),this%ddphidot_a(tot_points))
-    allocate(this%sampled_a(tot_points), this%fde(tot_points), this%ddfde(tot_points))
+    allocate(this%phi_a(max_points),this%phidot_a(max_points))
+    allocate(this%ddphi_a(max_points),this%ddphidot_a(max_points))
+    allocate(this%sampled_a(max_points), this%fde(max_points), this%ddfde(max_points))
     this%sampled_a(1:ix) = sampled_a(1:ix)
     this%phi_a(1:ix) = phi_a(1:ix)
     this%phidot_a(1:ix) = phidot_a(1:ix)
