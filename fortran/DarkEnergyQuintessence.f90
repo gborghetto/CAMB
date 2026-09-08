@@ -430,10 +430,17 @@
     this%max_a_log = 1.d0/this%npoints/(exp(this%dloga)-1)
     npoints = (log(this%max_a_log)-this%log_astart)/this%dloga + 1
 
-    if (allocated(this%phi_a)) then
-        deallocate(this%phi_a,this%phidot_a)
-        deallocate(this%ddphi_a,this%ddphidot_a, this%sampled_a)
-    end if
+!    if (allocated(this%phi_a)) then
+!        deallocate(this%phi_a,this%phidot_a)
+!        deallocate(this%ddphi_a,this%ddphidot_a, this%sampled_a)
+!        if (allocated(this%fde))   deallocate(this%fde)
+!        if (allocated(this%ddfde)) deallocate(this%ddfde)
+!    end if
+
+    if (allocated(this%phi_a))   deallocate(this%phi_a, this%phidot_a)
+    if (allocated(this%ddphi_a)) deallocate(this%ddphi_a, this%ddphidot_a, this%sampled_a)
+    if (allocated(this%fde))     deallocate(this%fde)
+    if (allocated(this%ddfde))   deallocate(this%ddfde)
     allocate(phi_a(npoints),phidot_a(npoints), sampled_a(npoints), fde(npoints))
 
     !initial_phi  = 10  !  0.3*grhom/m**3
@@ -911,10 +918,14 @@
     this%max_a_log = 1.d0/this%npoints/(exp(this%dloga)-1)
     npoints = (log(this%max_a_log)-this%log_astart)/this%dloga + 1
 
-    if (allocated(this%phi_a)) then
-        deallocate(this%phi_a,this%phidot_a)
-        deallocate(this%ddphi_a,this%ddphidot_a, this%sampled_a)
-    end if
+!    if (allocated(this%phi_a)) then
+!        deallocate(this%phi_a,this%phidot_a)
+!        deallocate(this%ddphi_a,this%ddphidot_a, this%sampled_a)
+!    end if
+    if (allocated(this%phi_a))   deallocate(this%phi_a, this%phidot_a)
+    if (allocated(this%ddphi_a)) deallocate(this%ddphi_a, this%ddphidot_a, this%sampled_a)
+    if (allocated(this%fde))     deallocate(this%fde)
+    if (allocated(this%ddfde))   deallocate(this%ddfde)
     allocate(phi_a(npoints),phidot_a(npoints), sampled_a(npoints), fde(npoints))
 
     if (FeedbackLevel > 0) write (*,'(A, 2ES10.2)') 'Initial values received for V0', this%V0,this%n ! just for testing
